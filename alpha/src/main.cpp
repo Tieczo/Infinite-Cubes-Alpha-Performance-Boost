@@ -22,12 +22,9 @@
 
 using namespace cube;
 
-// The device's settings (anonymous: this file's own): an anti-aliasing option step is two samples;
-// a failed reset is retried every 100 ms.
+// The device's settings (anonymous: this file's own): an anti-aliasing option step doubles the
+// samples (2x, 4x, 8x); a failed reset is retried every 100 ms.
 namespace {
-enum {
-    SamplesPerAntiAliasingStep = 2
-};
 enum {
     DeviceResetRetryDelay = 100
 };
@@ -208,10 +205,16 @@ void resetDevice(bool unused)
         }
         D3DPRESENT_PARAMETERS parameters;
         ZeroMemory(&parameters, sizeof(parameters));
-        if (!options.antiAliasing)
-            parameters.MultiSampleType = D3DMULTISAMPLE_NONE;
-        else
-            parameters.MultiSampleType = (D3DMULTISAMPLE_TYPE)(options.antiAliasing * SamplesPerAntiAliasingStep);
+        // 2^step samples, halved until the adapter supports them for the back and depth buffers
+        // (an unsupported count would make the reset below fail forever).
+        int samples = options.antiAliasing > 0 ? 1 << options.antiAliasing : 0;
+        while (samples >= 2 &&
+               (g_direct3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, !fullscreen,
+                                                       (D3DMULTISAMPLE_TYPE)samples, 0) != D3D_OK ||
+                g_direct3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, D3DFMT_D24S8, !fullscreen,
+                                                       (D3DMULTISAMPLE_TYPE)samples, 0) != D3D_OK))
+            samples /= 2;
+        parameters.MultiSampleType = samples >= 2 ? (D3DMULTISAMPLE_TYPE)samples : D3DMULTISAMPLE_NONE;
         parameters.MultiSampleQuality = 0;
         parameters.BackBufferFormat = D3DFMT_A8R8G8B8;
         parameters.BackBufferWidth = client.right;

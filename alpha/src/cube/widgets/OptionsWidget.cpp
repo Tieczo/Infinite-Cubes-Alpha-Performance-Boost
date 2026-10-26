@@ -16,7 +16,7 @@ namespace cube {
 // frame's minimum in milliseconds.
 namespace {
 enum {
-    MaximumAntiAliasing = 2
+    MaximumAntiAliasing = 3
 };
 enum {
     CameraSmoothnessStep = 5
@@ -242,7 +242,7 @@ void OptionsWidget::draw()
     if (m_options.antiAliasing <= 0)
         text << L"Disabled";
     else
-        text << m_options.antiAliasing * 2 << L"x";
+        text << (1 << m_options.antiAliasing) << L"x";
     m_engine->getFontEngine()->renderText(L"resource1.dat", L"Anti-aliasing", 0.0f, 0.0f, 15.0f, 87.0f, 12.0f, 3.0f,
                                           plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
                                           plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
