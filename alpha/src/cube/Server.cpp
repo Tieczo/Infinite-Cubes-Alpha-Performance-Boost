@@ -425,11 +425,13 @@ void Server::start()
                         }
                         if (length <= 0)
                             break;
-                        std::wstring text(length, 0);
-                        if (receiveAll(connections[slot]->socket, (char *)&text[0], length * 2, 0) == SOCKET_ERROR) {
+                        // UTF-16 on the wire, whatever the size of wchar_t.
+                        std::vector<unsigned short> units(length);
+                        if (receiveAll(connections[slot]->socket, (char *)&units[0], length * 2, 0) == SOCKET_ERROR) {
                             disconnected = true;
                             continue;
                         }
+                        std::wstring text(units.begin(), units.end());
                         // To every connection; an empty slot is not checked.
                         world->enterRegions();
                         for (int i = 0; i < (int)connections.size(); i++) {
@@ -672,7 +674,8 @@ void Server::start()
                         int length = chat.text.size();
                         if (send(connections[slot]->socket, (char *)&length, sizeof(length), 0) == SOCKET_ERROR)
                             break;
-                        if (send(connections[slot]->socket, (char *)&chat.text[0], length * 2, 0) == SOCKET_ERROR)
+                        std::vector<unsigned short> units(chat.text.begin(), chat.text.end()); // UTF-16
+                        if (send(connections[slot]->socket, (char *)&units[0], length * 2, 0) == SOCKET_ERROR)
                             break;
                     }
 

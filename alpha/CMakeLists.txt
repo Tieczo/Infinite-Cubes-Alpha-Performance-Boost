@@ -3,7 +3,10 @@ project(InfiniteCubesAlpha LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(CUBE_ALLOW_X64 "allow an experimental x64 build" OFF)
-if(NOT WIN32 OR NOT (CMAKE_SIZEOF_VOID_P EQUAL 4 OR CUBE_ALLOW_X64))
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ # Native Linux build: Direct3D 9 through DXVK-native, SDL3, FAudio (see platform/linux/README.md).
+ set(CUBE_LINUX ON)
+elseif(NOT WIN32 OR NOT (CMAKE_SIZEOF_VOID_P EQUAL 4 OR CUBE_ALLOW_X64))
  message(FATAL_ERROR "Use a Windows x86 compiler (see README.md)")
 endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -56,7 +59,7 @@ add_library(freetype STATIC
  thirdparty/freetype/src/base/ftbase.c
  thirdparty/freetype/src/base/ftbitmap.c
  thirdparty/freetype/src/cache/ftcache.c
- thirdparty/freetype/builds/win32/ftdebug.c
+ $<IF:$<BOOL:${CUBE_LINUX}>,thirdparty/freetype/src/base/ftdebug.c,thirdparty/freetype/builds/win32/ftdebug.c>
  thirdparty/freetype/src/base/ftfstype.c
  thirdparty/freetype/src/base/ftgasp.c
  thirdparty/freetype/src/base/ftglyph.c
@@ -132,7 +135,6 @@ add_executable(Cube WIN32
  src/cube/Serializer.cpp
  src/cube/widgets/EnchantWidget.cpp
  src/cube/Field.cpp
- src/Thread.cpp
  src/cube/GameController.cpp
  src/cube/GameControllerMovement.cpp
  src/cube/GameControllerRender.cpp
@@ -141,7 +143,6 @@ add_executable(Cube WIN32
  src/cube/widgets/InventoryWidget.cpp
  src/cube/Item.cpp
  src/cube/LookAtPlayerBehavior.cpp
- src/main.cpp
  src/cube/widgets/MapOverlayWidget.cpp
  src/cube/Network.cpp
  src/cube/widgets/ObjectiveWidget.cpp
@@ -217,15 +218,12 @@ add_executable(Cube WIN32
  plasma/src/plasma/Transformation.cpp
  plasma/src/plasma/Widget.cpp
 )
-target_include_directories(Cube PRIVATE include plasma/include platform)
-target_compile_definitions(Cube PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS)
 option(CUBE_SCRIPTING "The interface script engine (abstr::Machine, cube::System), which runs db.dat's check at start" ON)
 if(CUBE_SCRIPTING)
  target_compile_definitions(Cube PRIVATE CUBE_SCRIPTING=1)
 else()
  target_compile_definitions(Cube PRIVATE CUBE_SCRIPTING=0)
 endif()
-target_link_libraries(Cube PRIVATE pugixml sqlite zlibstatic d3d9 dinput8 dxguid winmm ws2_32 iphlpapi glu32 gdi32 ole32 shell32)
 add_executable(Server
  src/cube/Animation.cpp
  src/cube/CombatBehavior.cpp
@@ -235,7 +233,6 @@ add_executable(Server
  src/cube/CubeShader.cpp
  src/cube/Database.cpp
  src/cube/Field.cpp
- src/Thread.cpp
  src/cube/Item.cpp
  src/cube/LookAtPlayerBehavior.cpp
  src/cube/Network.cpp
@@ -261,9 +258,18 @@ add_executable(Server
  src/cube/Zone.cpp
  src/server/main.cpp
 )
-target_include_directories(Server PRIVATE include plasma/include)
-target_compile_definitions(Server PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(Server PRIVATE pugixml sqlite zlibstatic d3d9 dinput8 dxguid winmm ws2_32 iphlpapi glu32 gdi32 ole32 shell32)
+if(CUBE_LINUX)
+ include(cmake/Linux.cmake)
+else()
+ target_sources(Cube PRIVATE src/main.cpp src/Thread.cpp)
+ target_sources(Server PRIVATE src/Thread.cpp)
+ target_include_directories(Cube PRIVATE include plasma/include platform)
+ target_compile_definitions(Cube PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS)
+ target_link_libraries(Cube PRIVATE pugixml sqlite zlibstatic d3d9 dinput8 dxguid winmm ws2_32 iphlpapi glu32 gdi32 ole32 shell32)
+ target_include_directories(Server PRIVATE include plasma/include)
+ target_compile_definitions(Server PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS)
+ target_link_libraries(Server PRIVATE pugixml sqlite zlibstatic d3d9 dinput8 dxguid winmm ws2_32 iphlpapi glu32 gdi32 ole32 shell32)
+endif()
 target_sources(Cube PRIVATE platform/FreeImageRuntime.cpp)
 target_compile_definitions(Server PRIVATE CUBE_SERVER)
 target_link_libraries(Cube PRIVATE freetype vorbisfile FreeImage)
@@ -278,14 +284,14 @@ foreach(app Cube Server)
  if(MINGW)
   target_compile_options(${app} PRIVATE -fwrapv -Wa,-mbig-obj)
   target_link_options(${app} PRIVATE -static -static-libgcc -static-libstdc++)
- else()
+ elseif(MSVC)
   target_compile_options(${app} PRIVATE /std:c++17 /bigobj /EHsc)
  endif()
 endforeach()
 include(cmake/Shaders.cmake)
 
 
-if(MINGW)
+if(MINGW OR CUBE_LINUX)
  # Avoid costly inlining of the large sprite registration table.
  set_source_files_properties(src/cube/SpriteManager.cpp PROPERTIES COMPILE_OPTIONS -O1)
 endif()
