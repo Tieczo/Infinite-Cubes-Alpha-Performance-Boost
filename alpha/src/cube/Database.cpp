@@ -148,6 +148,9 @@ bool Database::open(const std::string &path)
         return false;
     }
     sqlite3_exec(m_db, "CREATE TABLE blobs(key TEXT PRIMARY KEY, value BLOB);", nullptr, nullptr, nullptr);
+    // Writes do not wait for the disk (Chris Miuchiz's stutter fix mod): saving no longer stalls
+    // the game, at the risk of losing the last writes if the system itself crashes.
+    sqlite3_exec(m_db, "PRAGMA synchronous=OFF;", nullptr, nullptr, nullptr);
     return true;
 }
 
