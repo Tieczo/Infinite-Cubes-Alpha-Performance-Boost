@@ -1,5 +1,7 @@
 // Engine implements scene ownership, font import and PLA/PLX loading.
 #include "plasma/Engine.h"
+#include "plasma/StringConversion.h"
+#include <algorithm>
 #include "plasma/FontEngine.h"
 #include "plasma/Node.h"
 #include "plasma/Widget.h"
@@ -1016,7 +1018,7 @@ bool Engine::readPlasmaFileIntoNode(const std::wstring &path, Node *target, int 
     int slash = (int)path.find_last_of(L'/');
     int backslash = (int)path.find_last_of(L'\\');
     int separator = (std::max)(slash, backslash);
-    std::ifstream stream(path.c_str(), std::ios::binary);
+    std::ifstream stream(streamPath(path), std::ios::binary);
     if (!stream.is_open())
         return false;
     std::wstring directory = path.substr(0, separator);
@@ -1697,10 +1699,10 @@ PlasmaFont *Engine::loadPlasmaFont(const std::wstring &path, float size)
     std::wstring basename = path.substr(separator + 1, path.size() - separator - 1);
     std::wstring directory;
     std::ifstream stream;
-    stream.open(path.c_str(), std::ios::in | std::ios::binary);
+    stream.open(streamPath(path), std::ios::in | std::ios::binary);
     if (!stream.is_open()) {
         for (std::list<std::wstring>::iterator it = m_fontPaths.begin(); it != m_fontPaths.end(); ++it) {
-            stream.open((*it + L"/" + basename).c_str(), std::ios::in | std::ios::binary);
+            stream.open(streamPath(*it + L"/" + basename), std::ios::in | std::ios::binary);
             if (stream.is_open()) {
                 directory = *it;
                 break;
@@ -1971,7 +1973,12 @@ Texture *Engine::loadImageTexture(const std::wstring &path)
         imageFormat = FIF_TARGA;
     else if (imageFormat == FIF_UNKNOWN)
         return 0;
+#ifdef _WIN32
     FIBITMAP *bitmap = FreeImage_LoadU(imageFormat, path.c_str(), 0);
+#else
+    // FreeImage_LoadU only exists on Windows.
+    FIBITMAP *bitmap = FreeImage_Load(imageFormat, streamPath(path).c_str(), 0);
+#endif
     if (!bitmap)
         return 0;
     int width = FreeImage_GetWidth(bitmap);
@@ -2088,12 +2095,10 @@ std::wstring readWString(std::istream &stream)
     int length = readValue<int>(stream);
     if (!length)
         return std::wstring(L"");
-    wchar_t *buffer = new wchar_t[length + 1];
-    buffer[length] = 0;
-    stream.read(reinterpret_cast<char *>(buffer), length * 2);
-    std::wstring value(buffer);
-    delete[] buffer;
-    return value;
+    // Two bytes per character in the file, whatever the size of wchar_t.
+    std::vector<unsigned short> buffer(length + 1, 0);
+    stream.read(reinterpret_cast<char *>(&buffer[0]), length * 2);
+    return std::wstring(buffer.begin(), std::find(buffer.begin(), buffer.end(), 0));
 }
 
 Widget *Engine::readWidget(std::istream &stream)

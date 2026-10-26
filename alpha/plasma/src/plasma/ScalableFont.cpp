@@ -849,7 +849,7 @@ bool ScalableFont::loadPlasma(const std::wstring &path)
 {
     lock();
     std::ifstream file;
-    file.open(path.c_str(), std::ios::in | std::ios::binary);
+    file.open(streamPath(path), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         unlock();
         return false;

@@ -2210,11 +2210,11 @@ void GameController::connect(const std::string &address)
     // The world is the server's now: it is neither saved nor generated here.
     m_world.m_client = true;
     m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    unsigned long host = inet_addr(address.c_str());
+    unsigned int host = inet_addr(address.c_str()); // an IPv4 address, four bytes
     if (host == INADDR_NONE) {
         hostent *entry = gethostbyname(address.c_str());
         if (entry)
-            host = *(unsigned long *)entry->h_addr_list[0];
+            host = *(unsigned int *)entry->h_addr_list[0];
     }
     sockaddr_in server;
     memset(&server, 0, sizeof(server));
@@ -2573,11 +2573,13 @@ void GameController::connect(const std::string &address)
                     }
                     if (length <= 0)
                         break;
-                    message.text.resize(length);
-                    if (receiveAll(m_socket, (char *)&message.text[0], length * 2, 0) == SOCKET_ERROR) {
+                    // UTF-16 on the wire, whatever the size of wchar_t.
+                    std::vector<unsigned short> units(length);
+                    if (receiveAll(m_socket, (char *)&units[0], length * 2, 0) == SOCKET_ERROR) {
                         disconnected = true;
                         break;
                     }
+                    message.text.assign(units.begin(), units.end());
                     m_world.enterRegions();
                     m_chatMessages.push_back(message);
                     m_world.leaveRegions();
@@ -2727,7 +2729,8 @@ void GameController::connect(const std::string &address)
                         break;
                     if (send(m_socket, (char *)&length, sizeof(length), 0) == SOCKET_ERROR)
                         break;
-                    if (send(m_socket, (char *)chat.c_str(), length * 2, 0) == SOCKET_ERROR)
+                    std::vector<unsigned short> units(chat.begin(), chat.end()); // UTF-16 on the wire
+                    if (send(m_socket, (char *)&units[0], length * 2, 0) == SOCKET_ERROR)
                         break;
                 }
                 if (interacting) {
@@ -5143,8 +5146,8 @@ void GameController::onDeleteCharacter()
 void GameController::onDeleteWorld()
 {
     if (m_selectedWorld >= 0 && m_selectedWorld < (int)m_worlds.size()) {
-        std::string worldPath = "Save\\world_" + m_worlds[m_selectedWorld]->m_name + ".db";
-        std::string mapPath = "Save\\map_" + m_worlds[m_selectedWorld]->m_name + ".db";
+        std::string worldPath = "Save/world_" + m_worlds[m_selectedWorld]->m_name + ".db";
+        std::string mapPath = "Save/map_" + m_worlds[m_selectedWorld]->m_name + ".db";
         DeleteFileA(worldPath.c_str());
         DeleteFileA(mapPath.c_str());
         delete m_worlds[m_selectedWorld];

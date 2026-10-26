@@ -1,6 +1,7 @@
 // ChunkStreamReader reads the chunk layer of PLX streams. At end of stream it returns an empty name; sealed name definitions are deobfuscated only when requested.
 #include "plasma/ChunkStreamReader.h"
 #include <vector>
+#include <algorithm>
 
 namespace plasma {
 
@@ -84,12 +85,10 @@ std::wstring ChunkStreamReader::readWString()
     int length = readValue<int>();
     if (!length)
         return std::wstring(L"");
-    wchar_t *characters = new wchar_t[length + 1];
-    characters[length] = 0;
-    m_stream->read(reinterpret_cast<char *>(characters), 2 * length);
-    std::wstring result(characters);
-    delete[] characters;
-    return result;
+    // Two bytes per character in the file, whatever the size of wchar_t.
+    std::vector<unsigned short> characters(length + 1, 0);
+    m_stream->read(reinterpret_cast<char *>(&characters[0]), 2 * length);
+    return std::wstring(characters.begin(), std::find(characters.begin(), characters.end(), 0));
 }
 
 void ChunkStreamReader::skipChunk()
