@@ -126,7 +126,10 @@ enum {
 }; // "Please wait..." until the meshes reach this far around the camera The world and the player.
 enum {
     ChunkGridSide = 40
-}; // chunks per side of the view square
+}; // chunks per side of the view square at a render distance of up to 100%
+enum {
+    MaximumChunkGridSide = 80
+}; // chunks per side of the allocated grid: the view square at 200%
 enum {
     InitialSeed = 123
 }; // replaced by timeGetTime before the world is set up
@@ -271,7 +274,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
       m_targetMapZoom(1.0f),
       m_loadedMeshRadius(0),
       m_screenShake(0),
-      m_viewDistance(ChunkGridSide),
+      m_viewDistance(MaximumChunkGridSide),
       m_chunks(0),
       m_world(device, false),
       m_shader(shader),
@@ -346,7 +349,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
     m_cameraRotation[0] = TitleCameraPitch;
     m_cameraRotation[2] = 0.0f;
     m_targetCameraRotation = m_cameraRotation;
-    m_viewRadius = m_viewDistance * 0.5f * BlocksPerChunk;
+    m_viewRadius = ChunkGridSide * 0.5f * BlocksPerChunk;
 
     m_textFxNode = m_engine->createNode(0, 0, 0, m_engine->root(), L"textFX");
     m_minimapNode = m_engine->createNode(0, 0, 0, m_gameScreen, L"minimap");
@@ -1302,6 +1305,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 LeaveCriticalSection(&m_chunkUpdateLock);
             } else {
                 std::vector<NearbyChunk> slots;
+                int activeHalf = activeViewSide() / 2;
                 for (int x = origin[0]; x < origin[0] + m_viewDistance; x++) {
                     for (int y = origin[1]; y < origin[1] + m_viewDistance; y++) {
                         if (x >= 0 && y >= 0 && x < ChunksPerWorld && y < ChunksPerWorld) {
@@ -1309,6 +1313,10 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                             plasma::Vector<2, int> offset(x - m_viewDistance / 2 - origin[0],
                                                           y - m_viewDistance / 2 - origin[1]);
                             int distance = offset.squaredLength();
+                            // Outside the active square: sorted last and dropped like chunks over the budget.
+                            if (offset[0] < -activeHalf || offset[0] >= activeHalf || offset[1] < -activeHalf ||
+                                offset[1] >= activeHalf)
+                                distance = 0x7fffffff;
                             NearbyChunk slot;
                             slot.zone = zone;
                             slot.distance = distance;
@@ -1327,7 +1335,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 bool mayMesh = true;
                 EnterCriticalSection(&m_chunkUpdateLock);
                 for (std::vector<NearbyChunk>::iterator slot = slots.begin(); slot != slots.end(); ++slot) {
-                    if (used > budget) {
+                    if (used > budget || slot->distance == 0x7fffffff) {
                         slot->chunk->reset();
                     } else {
                         if (slot->chunk->position != slot->zone || slot->chunk->needsRemesh) {
@@ -1458,14 +1466,17 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 LeaveCriticalSection(&m_chunkUpdateLock);
             } else {
                 bool found = false;
-                int nearestDistance = 0x90000; // 3 zones (768 blocks), squared
+                // 3 zones (768 blocks) at up to 100%, scaled with the active square above.
+                int zoneRange = (3 * activeViewSide() + ChunkGridSide - 1) / ChunkGridSide;
+                int generationDistance = 768 * activeViewSide() / ChunkGridSide;
+                int nearestDistance = generationDistance * generationDistance;
                 plasma::Vector<2, int> nearest;
                 for (std::list<plasma::Vector<2, int>>::iterator it = requests.begin(); it != requests.end(); it++) {
                     plasma::Vector<2, int> zone = *it;
-                    int minX = zone[0] - 3;
-                    int maxX = zone[0] + 3;
-                    int minY = zone[1] - 3;
-                    int maxY = zone[1] + 3;
+                    int minX = zone[0] - zoneRange;
+                    int maxX = zone[0] + zoneRange;
+                    int minY = zone[1] - zoneRange;
+                    int maxY = zone[1] + zoneRange;
                     if (minX < 0)
                         minX = 0;
                     if (maxX >= ZonesPerWorld)
@@ -1501,12 +1512,13 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
             int now = timeGetTime();
             if (worldChanged || now - lastCleanup > 1000) {
                 lastCleanup = now;
+                int keepRange = (3 * activeViewSide() + ChunkGridSide - 1) / ChunkGridSide + 1;
                 for (int x = 0; x < 0x400; x++) {
                     for (int y = 0; y < 0x400; y++) {
                         Region *region = m_world.getRegion(x, y);
                         if (!region)
                             continue;
-                        // Zones farther than 4 zones from every request.
+                        // Zones farther than 4 zones (at up to 100%) from every request.
                         for (int i = 0; i < 64; i++) {
                             for (int j = 0; j < 64; j++) {
                                 Zone *zone = region->m_zones[i][j];
@@ -1516,7 +1528,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                                 if (!worldChanged) {
                                     for (std::list<plasma::Vector<2, int>>::iterator it = requests.begin();
                                          it != requests.end(); it++) {
-                                        if ((zone->m_position - *it).squaredLength() < 16) {
+                                        if ((zone->m_position - *it).squaredLength() < keepRange * keepRange) {
                                             keep = true;
                                             break;
                                         }
@@ -5958,9 +5970,12 @@ void GameController::update(int milliseconds)
     // nearest chunk without one (or holding another zone) limits it. It is blended, less the 22.4
     // blocks of fog, and kept tiny while another world than the selected one is loaded.
     m_world.enterRegions();
-    float radiusSquared = m_viewRadius * m_viewRadius;
-    for (int x = m_chunkOrigin[0]; x < m_chunkOrigin[0] + m_viewDistance; x++) {
-        for (int y = m_chunkOrigin[1]; y < m_chunkOrigin[1] + m_viewDistance; y++) {
+    int activeSide = activeViewSide();
+    int activeStart = (m_viewDistance - activeSide) / 2;
+    float activeRadius = activeSide * 0.5f * BlocksPerChunk;
+    float radiusSquared = activeRadius * activeRadius;
+    for (int x = m_chunkOrigin[0] + activeStart; x < m_chunkOrigin[0] + activeStart + activeSide; x++) {
+        for (int y = m_chunkOrigin[1] + activeStart; y < m_chunkOrigin[1] + activeStart + activeSide; y++) {
             if (x < 0 || y < 0 || x >= ChunksPerWorld || y >= ChunksPerWorld)
                 continue;
             Chunk *chunk = &m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
@@ -9646,6 +9661,16 @@ static void addQuad(std::vector<int> &indices, size_t first)
 static inline bool isFaceOpen(unsigned char type, int neighbourType)
 {
     return neighbourType == BlockAir || (type != BlockWater && neighbourType == BlockWater);
+}
+
+int GameController::activeViewSide()
+{
+    int renderDistance = m_options.renderDistance;
+    if (renderDistance < 100)
+        renderDistance = 100;
+    if (renderDistance > 200)
+        renderDistance = 200;
+    return (ChunkGridSide * renderDistance / 100) & ~1;
 }
 
 void GameController::updateChunk(int x, int y)

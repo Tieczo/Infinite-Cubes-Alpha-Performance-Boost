@@ -49,7 +49,7 @@ enum {
     MinimumRenderDistance = 25
 };
 enum {
-    MaximumRenderDistance = 100
+    MaximumRenderDistance = 200
 };
 }
 

@@ -287,6 +287,9 @@ public:
     // R on a hovered object : advances the player's speech.
     void useObject(Zone::Object *object, bool advance);
     // Meshes a 32-by-32-block chunk into solid and water faces and uploads the buffers. The chunk worker calls this helper.
+    // Chunks per side of the square kept meshed around the camera: 40 up to a render distance of
+    // 100%, then growing with it to 80 (m_viewDistance) at 200%.
+    int activeViewSide();
     void updateChunk(int x, int y);
     // Shades a face corner using neighboring block light and occlusion, with light stored in w. Plain colors are returned unchanged.
     plasma::Vector<4, float> shade(int x, int y, int z, const plasma::Vector<4, float> &color,
@@ -408,7 +411,7 @@ public:
     float m_mapZoom;              // 1; blended towards m_targetMapZoom (update): the map's scale
     float m_targetMapZoom;        // 1 at first; the wheel keeps it in 0.01..10
     float m_actualCameraDistance; // camera distance after terrain collision (update); zero puts the camera at its focus
-    float m_viewRadius;           // half the view square in blocks (m_viewDistance * 16)
+    float m_viewRadius;           // half the 100% view square in blocks (ChunkGridSide * 16)
     float m_loadedMeshRadius;     // Smoothed loaded-mesh radius minus 22.4 blocks; fog adds that distance back.
     // Draw positions relative to the negative camera focus to keep view calculations in small floats.
     Fixed m_drawOriginX;                  // minus m_cameraFocus's x (update): the origin things are drawn relative to
@@ -428,7 +431,7 @@ public:
     std::list<plasma::Vector<2, int>> m_playerZones;    // the zones around the local players
     std::list<plasma::Vector<2, int>> m_zoneRequests;   // those zones still without data
     std::list<plasma::Vector<2, int>> m_regionRequests; // their regions still without data (may repeat)
-    int m_viewDistance; // chunk-grid side (40); updateChunk indexes 32-column chunks modulo it
+    int m_viewDistance; // chunk-grid side (80); updateChunk indexes 32-column chunks modulo it
     Chunk *m_chunks;    // new[]; deleted by the destructor
     World m_world;
     CubeShader *m_shader;   // the constructor's second argument
