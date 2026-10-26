@@ -7,9 +7,6 @@
 #include <sstream>
 #include <algorithm>
 #include <iomanip>
-#include <thread>
-#include <utility>
-#include <vector>
 #include "cube/widgets/ChatWidget.h"
 #include "cube/widgets/CharacterStyleWidget.h"
 #include "cube/widgets/CharacterWidget.h"
@@ -124,9 +121,6 @@ enum {
 enum {
     ZoneThreadSleep = 20
 };
-enum {
-    ParallelZoneGenerationLimit = 8
-}; // zones generated at once by the zone thread (at most half the hardware threads)
 enum {
     PlayableMeshRadius = 8
 }; // "Please wait..." until the meshes reach this far around the camera The world and the player.
@@ -1471,13 +1465,12 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 }
                 LeaveCriticalSection(&m_chunkUpdateLock);
             } else {
-                // The nearest missing zones, sorted by their distance to the camera (Chris Miuchiz's
-                // multithreaded terrain generation mod: several are generated at once).
-                std::vector<std::pair<int, std::pair<int, int>>> missing;
+                bool found = false;
                 // 3 zones (768 blocks) at up to 100%, scaled with the active square above.
                 int zoneRange = (3 * activeViewSide() + ChunkGridSide - 1) / ChunkGridSide;
                 int generationDistance = 768 * activeViewSide() / ChunkGridSide;
                 int nearestDistance = generationDistance * generationDistance;
+                plasma::Vector<2, int> nearest;
                 for (std::list<plasma::Vector<2, int>>::iterator it = requests.begin(); it != requests.end(); it++) {
                     plasma::Vector<2, int> zone = *it;
                     int minX = zone[0] - zoneRange;
@@ -1497,41 +1490,20 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                             int distance = (camera - plasma::Vector<2, int>(x * BlocksPerZone + BlocksPerZone / 2,
                                                                             y * BlocksPerZone + BlocksPerZone / 2))
                                                .squaredLength();
-                            if (distance < nearestDistance && !m_world.zone(x, y))
-                                missing.push_back(std::make_pair(distance, std::make_pair(x, y)));
+                            if (distance < nearestDistance && !m_world.zone(x, y)) {
+                                nearest = plasma::Vector<2, int>(x, y);
+                                nearestDistance = distance;
+                                found = true;
+                            }
                         }
                     }
                 }
-                if (!missing.empty()) {
-                    std::sort(missing.begin(), missing.end());
-                    missing.erase(std::unique(missing.begin(), missing.end()), missing.end());
-                    unsigned workers = std::thread::hardware_concurrency() / 2;
-                    workers = workers < 1 ? 1 : (workers > ParallelZoneGenerationLimit ? ParallelZoneGenerationLimit : workers);
-                    if (missing.size() > workers)
-                        missing.resize(workers);
-                    // The regions around the zones first, one after another: two zones must not
-                    // create the same region at once. Then the zones, each on its own thread.
-                    for (size_t i = 0; i < missing.size(); i++) {
-                        int regionX = missing[i].second.first / ZonesPerRegion;
-                        int regionY = missing[i].second.second / ZonesPerRegion;
-                        for (int dx = -1; dx <= 1; dx++)
-                            for (int dy = -1; dy <= 1; dy++)
-                                m_world.generateRegion(regionX + dx, regionY + dy);
-                    }
-                    std::vector<std::thread> generators;
-                    for (size_t i = 1; i < missing.size(); i++)
-                        generators.push_back(std::thread(
-                            [this](int x, int y) { m_world.generateZone(x, y); }, missing[i].second.first,
-                            missing[i].second.second));
-                    m_world.generateZone(missing[0].second.first, missing[0].second.second);
-                    for (size_t i = 0; i < generators.size(); i++)
-                        generators[i].join();
+                if (found) {
+                    m_world.generateZone(nearest[0], nearest[1]);
                     m_worldMap.enterZones();
-                    for (size_t i = 0; i < missing.size(); i++) {
-                        ZoneTile *tile = m_worldMap.getZoneTile(missing[i].second.first, missing[i].second.second);
-                        if (tile)
-                            tile->m_needsRebuild = true;
-                    }
+                    ZoneTile *tile = m_worldMap.getZoneTile(nearest[0], nearest[1]);
+                    if (tile)
+                        tile->m_needsRebuild = true;
                     m_worldMap.leaveZones();
                     EnterCriticalSection(&m_streamingLock);
                     LeaveCriticalSection(&m_streamingLock);

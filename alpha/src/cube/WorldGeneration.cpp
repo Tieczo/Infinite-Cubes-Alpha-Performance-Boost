@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <sstream>
-#include <mutex>
 #include "cube/Serializer.h"
 #include "cube/Sprite.h"
 #include "cube/House.h"
@@ -7150,12 +7149,7 @@ void World::generateZone(int x, int y)
     }
 
     zone->m_baseSpawnCount = (int)zone->m_spawns.size();
-    {
-        // Zones generated at once (GameController's zone thread) share the world's creatures here.
-        static std::mutex populationLock;
-        std::lock_guard<std::mutex> lock(populationLock);
-        refreshZonePopulation(zone);
-    }
+    refreshZonePopulation(zone);
     // The zone's saved changes.
     if (!m_client && !m_name.empty()) {
         std::stringstream key;
