@@ -1289,11 +1289,14 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
     m_running = true;
     // The chunk thread: keeps the chunks of the grid around m_chunkOrigin loaded, nearest first,
     // within a memory budget set by the render distance, meshes at most one chunk per pass, and saves
-    // the character once a minute in a local world.
+    // the character once a minute in a local world. It pauses between passes only when it meshed
+    // nothing: a chunk takes about as long as the pause, so pausing after each one halved the loading
+    // speed (most noticeable at 200% render distance, with four times the chunks).
     m_chunkThread = StartThread([this]() {
         static int lastSave;
         timeGetTime(); // the result is not used
         while (m_running) {
+            bool meshed = false; // this pass meshed a chunk
             EnterCriticalSection(&m_streamingLock);
             plasma::Vector<2, int> origin = m_chunkOrigin;
             bool worldChanged = m_seed != m_world.getSeed() || m_worldName != m_world.getName();
@@ -1343,6 +1346,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                                 slot->chunk->reset();
                             if (mayMesh && canMesh(slot->zone[0], slot->zone[1])) {
                                 mayMesh = false;
+                                meshed = true;
                                 updateChunk(slot->zone[0], slot->zone[1]);
                             }
                         }
@@ -1356,7 +1360,8 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 saveCharacter(m_selectedCharacter, m_player);
                 lastSave = now;
             }
-            Sleep(ChunkThreadSleep);
+            if (!meshed)
+                Sleep(ChunkThreadSleep);
         }
     });
     SetThreadPriority(m_chunkThread, THREAD_PRIORITY_BELOW_NORMAL);
