@@ -17,8 +17,22 @@ basic types and COM. The shaders are the checked-in bytecode headers (fxc is not
 
 ## Building
 
-DXVK-native and FAudio are not Arch packages in the needed form; build them once from source
-(meson, ninja, cmake, glslang, sdl3), then:
+`build.sh` does it all, without root. It needs git, cmake, ninja, meson, gcc, glslang, SDL3, GLU,
+python3 and a Vulkan driver (Arch: `sudo pacman -S --needed base-devel git cmake ninja meson glslang
+sdl3 glu python`). With your own Cube World Alpha's folder (the one with Cube.exe) as argument it
+also puts together a playable folder:
+
+    git clone https://github.com/Tieczo/Infinite-Cubes.git
+    Infinite-Cubes/alpha/platform/linux/build.sh "/path/to/Cube World" ~/Games/CubeWorldAlphaLinux
+    ~/Games/CubeWorldAlphaLinux/Cube
+
+It downloads and builds DXVK-native 3.1.1 and FAudio 26.10 once (into `alpha/build-linux/deps`),
+builds `Cube` and `Server`, and copies the programs, `lib/` and the game's data files into the target
+folder (default `alpha/build-linux/game`). Running it again after `git pull` updates the programs and
+keeps `Save/` and `options.cfg`. Render distance up to 200%, anti-aliasing up to 8x, fullscreen and
+resolution are in the game's options.
+
+By hand: build DXVK-native (meson, `-Dnative_sdl3=enabled`, Direct3D 9 only) and FAudio, then
 
     cd alpha
     cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUBE_SCRIPTING=OFF \
