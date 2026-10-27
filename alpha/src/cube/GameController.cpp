@@ -1323,38 +1323,29 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
             } else {
                 std::vector<NearbyChunk> slots;
                 int activeSide = activeViewSide();
-                int activeHalf = activeSide / 2;
-                // Each pass goes through the active square; now and then, and when the square shrank, the
-                // whole grid, so that slots outside it are emptied.
+                // Each pass goes through the active square, always in the same order; now and then, and when
+                // the square shrank, the slots outside it are emptied as well. (Sorting the whole grid in those
+                // passes put chunks of equal distance in another order, so one at the edge of the budget was
+                // dropped and meshed again every time.)
                 static int s_lastActiveSide, s_sweepPass;
                 bool sweep = activeSide != s_lastActiveSide || ++s_sweepPass % OutsideSweepPasses == 0;
                 s_lastActiveSide = activeSide;
-                int first = sweep ? 0 : (m_viewDistance - activeSide) / 2;
-                int side = sweep ? m_viewDistance : activeSide;
-                for (int x = origin[0] + first; x < origin[0] + first + side; x++) {
-                    for (int y = origin[1] + first; y < origin[1] + first + side; y++) {
+                int first = (m_viewDistance - activeSide) / 2;
+                for (int x = origin[0] + first; x < origin[0] + first + activeSide; x++) {
+                    for (int y = origin[1] + first; y < origin[1] + first + activeSide; y++) {
                         if (x >= 0 && y >= 0 && x < ChunksPerWorld && y < ChunksPerWorld) {
                             plasma::Vector<2, int> zone(x, y);
                             plasma::Vector<2, int> offset(x - m_viewDistance / 2 - origin[0],
                                                           y - m_viewDistance / 2 - origin[1]);
-                            int distance = offset.squaredLength();
-                            // Outside the active square: sorted last and dropped like chunks over the budget.
-                            if (offset[0] < -activeHalf || offset[0] >= activeHalf || offset[1] < -activeHalf ||
-                                offset[1] >= activeHalf)
-                                distance = 0x7fffffff;
                             NearbyChunk slot;
                             slot.zone = zone;
-                            slot.distance = distance;
+                            slot.distance = offset.squaredLength();
                             slot.chunk = &m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
                             slots.push_back(slot);
                         }
                     }
                 }
-                // Only the active square is sorted; the slots outside it go to the end (the grid holds the
-                // 400% square, so at lower settings most slots are outside).
-                std::vector<NearbyChunk>::iterator outside = std::partition(
-                    slots.begin(), slots.end(), [](const NearbyChunk &slot) { return slot.distance != 0x7fffffff; });
-                std::sort(slots.begin(), outside,
+                std::sort(slots.begin(), slots.end(),
                           [](const NearbyChunk &a, const NearbyChunk &b) { return a.distance < b.distance; });
                 long long used = 0;
                 m_world.enterRegions();
@@ -1363,9 +1354,22 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 m_world.leaveRegions();
                 bool mayMesh = true;
                 EnterCriticalSection(&m_chunkUpdateLock);
+                if (sweep) {
+                    for (int x = origin[0]; x < origin[0] + m_viewDistance; x++) {
+                        for (int y = origin[1]; y < origin[1] + m_viewDistance; y++) {
+                            bool inWorld = x >= 0 && y >= 0 && x < ChunksPerWorld && y < ChunksPerWorld;
+                            if (inWorld && (x - origin[0] < first || x - origin[0] >= first + activeSide ||
+                                            y - origin[1] < first || y - origin[1] >= first + activeSide))
+                                m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance].reset();
+                        }
+                    }
+                }
                 for (std::vector<NearbyChunk>::iterator slot = slots.begin(); slot != slots.end(); ++slot) {
-                    if (used > budget || slot->distance == 0x7fffffff) {
-                        slot->chunk->reset();
+                    if (used > budget) {
+                        // Only chunks still holding a zone: at 400% most of the square is over the budget, and
+                        // emptying it again every pass kept the thread busy.
+                        if (slot->chunk->position != plasma::Vector<2, int>(-1, -1))
+                            slot->chunk->reset();
                     } else {
                         if (slot->chunk->position != slot->zone || slot->chunk->needsRemesh) {
                             if (slot->chunk->position != slot->zone)
