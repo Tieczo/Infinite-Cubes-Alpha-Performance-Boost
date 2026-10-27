@@ -49,7 +49,7 @@ enum {
     MinimumRenderDistance = 25
 };
 enum {
-    MaximumRenderDistance = 200
+    MaximumRenderDistance = sizeof(void *) == 4 ? 200 : 400 // 32-bit builds may use 4 GB at most
 };
 }
 

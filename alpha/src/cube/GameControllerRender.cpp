@@ -122,16 +122,25 @@ void GameController::render()
 
     // The chunks whose new meshes are complete: a remesh shares its time stamp with the other chunks
     // of the same pass, and a pass is shown only when none of its chunks is still waiting.
+    // Only the active square of the chunk grid holds meshes (the grid has room for the largest one);
+    // the chunk thread empties the slots outside it.
+    int activeSide = activeViewSide();
+    int activeX = m_chunkOrigin[0] + (m_viewDistance - activeSide) / 2;
+    int activeY = m_chunkOrigin[1] + (m_viewDistance - activeSide) / 2;
     std::map<int, int> pending;
-    for (int i = 0; i < m_viewDistance * m_viewDistance; i++) {
-        int remeshTime = m_chunks[i].remeshTime;
-        if (remeshTime != 0 && m_chunks[i].needsRemesh)
-            pending[remeshTime]++;
+    for (int x = activeX; x < activeX + activeSide; x++) {
+        for (int y = activeY; y < activeY + activeSide; y++) {
+            if (x < 0 || y < 0 || x >= ChunksPerWorld || y >= ChunksPerWorld)
+                continue;
+            const Chunk &chunk = m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
+            if (chunk.remeshTime != 0 && chunk.needsRemesh)
+                pending[chunk.remeshTime]++;
+        }
     }
 
     float range = m_loadedMeshRadius + 22.4f;
-    for (int x = m_chunkOrigin[0]; x < m_chunkOrigin[0] + m_viewDistance; x++) {
-        for (int y = m_chunkOrigin[1]; y < m_chunkOrigin[1] + m_viewDistance; y++) {
+    for (int x = activeX; x < activeX + activeSide; x++) {
+        for (int y = activeY; y < activeY + activeSide; y++) {
             if (x < 0 || y < 0 || x >= ChunksPerWorld || y >= ChunksPerWorld)
                 continue;
             Chunk *chunk = &m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
@@ -370,11 +379,14 @@ void GameController::render()
     plasma::Matrix<float> skyView = m_worldViewMatrix;
     skyView.translate(plasma::Vector<3, float>(m_cameraPosition));
     plasma::Matrix<float> skyProjection;
-    // A narrower field of view while sneaking: 30 degrees instead of 50 (the planes 0.1 and 2000
+    // The far plane: 2000 blocks up to 200% render distance, then growing with it (4000 at 400%), so the
+    // landscape and the clouds of the larger view square are not cut off.
+    float farPlane = m_options.renderDistance > 200 ? 2000.0f * m_options.renderDistance / 200.0f : 2000.0f;
+    // A narrower field of view while sneaking: 30 degrees instead of 50 (the planes 0.1 and farPlane
     // blocks away).
     skyProjection.setPerspective(m_player->m_entityData.binaryToggles.sneaking ? 30.0f / 180.0f * 3.1415927f
                                                                                : 50.0f / 180.0f * 3.1415927f,
-                                 -((float)m_windowWidth / (float)m_windowHeight), 0.1f, 2000.0f);
+                                 -((float)m_windowWidth / (float)m_windowHeight), 0.1f, farPlane);
     m_device->SetTexture(0, 0);
     m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&identity);
     m_device->SetTransform(D3DTS_VIEW, (const D3DMATRIX *)&identity);
@@ -714,12 +726,16 @@ void GameController::render()
     // nearest sixteen light everything else.
     std::sort(lights.begin(), lights.end(),
               [this](const FrameLight &a, const FrameLight &b) { return a.distanceSquared < b.distanceSquared; });
-    for (int i = 0; i < m_viewDistance * m_viewDistance; i++) {
-        Chunk &chunk = m_chunks[i];
-        chunk.lightCount = 0;
-        for (int j = 0; j < 16; j++) {
-            chunk.lightPositions[j] = plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f);
-            chunk.lightColors[j] = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
+    for (int x = activeX; x < activeX + activeSide; x++) {
+        for (int y = activeY; y < activeY + activeSide; y++) {
+            if (x < 0 || y < 0 || x >= ChunksPerWorld || y >= ChunksPerWorld)
+                continue;
+            Chunk &chunk = m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
+            chunk.lightCount = 0;
+            for (int j = 0; j < 16; j++) {
+                chunk.lightPositions[j] = plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f);
+                chunk.lightColors[j] = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
+            }
         }
     }
     for (std::vector<FrameLight>::iterator light = lights.begin(); light != lights.end(); light++) {

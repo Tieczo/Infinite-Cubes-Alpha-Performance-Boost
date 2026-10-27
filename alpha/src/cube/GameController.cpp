@@ -134,8 +134,14 @@ enum {
     ChunkGridSide = 40
 }; // chunks per side of the view square at a render distance of up to 100%
 enum {
-    MaximumChunkGridSide = 80
-}; // chunks per side of the allocated grid: the view square at 200%
+    OutsideSweepPasses = 64
+}; // chunk-thread passes between sweeps of the slots outside the active square
+enum {
+    MaximumRenderPercent = sizeof(void *) == 4 ? 200 : 400
+}; // the render distance's maximum: 200% in 32-bit builds, which may use 4 GB at most
+enum {
+    MaximumChunkGridSide = ChunkGridSide * MaximumRenderPercent / 100
+}; // chunks per side of the allocated grid: the view square at the maximum (160 at 400%)
 enum {
     InitialSeed = 123
 }; // replaced by timeGetTime before the world is set up
@@ -1316,9 +1322,17 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 LeaveCriticalSection(&m_chunkUpdateLock);
             } else {
                 std::vector<NearbyChunk> slots;
-                int activeHalf = activeViewSide() / 2;
-                for (int x = origin[0]; x < origin[0] + m_viewDistance; x++) {
-                    for (int y = origin[1]; y < origin[1] + m_viewDistance; y++) {
+                int activeSide = activeViewSide();
+                int activeHalf = activeSide / 2;
+                // Each pass goes through the active square; now and then, and when the square shrank, the
+                // whole grid, so that slots outside it are emptied.
+                static int s_lastActiveSide, s_sweepPass;
+                bool sweep = activeSide != s_lastActiveSide || ++s_sweepPass % OutsideSweepPasses == 0;
+                s_lastActiveSide = activeSide;
+                int first = sweep ? 0 : (m_viewDistance - activeSide) / 2;
+                int side = sweep ? m_viewDistance : activeSide;
+                for (int x = origin[0] + first; x < origin[0] + first + side; x++) {
+                    for (int y = origin[1] + first; y < origin[1] + first + side; y++) {
                         if (x >= 0 && y >= 0 && x < ChunksPerWorld && y < ChunksPerWorld) {
                             plasma::Vector<2, int> zone(x, y);
                             plasma::Vector<2, int> offset(x - m_viewDistance / 2 - origin[0],
@@ -1336,7 +1350,11 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                         }
                     }
                 }
-                std::sort(slots.begin(), slots.end(),
+                // Only the active square is sorted; the slots outside it go to the end (the grid holds the
+                // 400% square, so at lower settings most slots are outside).
+                std::vector<NearbyChunk>::iterator outside = std::partition(
+                    slots.begin(), slots.end(), [](const NearbyChunk &slot) { return slot.distance != 0x7fffffff; });
+                std::sort(slots.begin(), outside,
                           [](const NearbyChunk &a, const NearbyChunk &b) { return a.distance < b.distance; });
                 long long used = 0;
                 m_world.enterRegions();
@@ -9714,8 +9732,8 @@ int GameController::activeViewSide()
     int renderDistance = m_options.renderDistance;
     if (renderDistance < 100)
         renderDistance = 100;
-    if (renderDistance > 200)
-        renderDistance = 200;
+    if (renderDistance > MaximumRenderPercent)
+        renderDistance = MaximumRenderPercent;
     return (ChunkGridSide * renderDistance / 100) & ~1;
 }
 

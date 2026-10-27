@@ -288,7 +288,7 @@ public:
     void useObject(Zone::Object *object, bool advance);
     // Meshes a 32-by-32-block chunk into solid and water faces and uploads the buffers. The chunk worker calls this helper.
     // Chunks per side of the square kept meshed around the camera: 40 up to a render distance of
-    // 100%, then growing with it to 80 (m_viewDistance) at 200%.
+    // 100%, then growing with it to 160 (m_viewDistance) at 400% (80 at 200% in 32-bit builds).
     int activeViewSide();
     void updateChunk(int x, int y);
     // Shades a face corner using neighboring block light and occlusion, with light stored in w. Plain colors are returned unchanged.
@@ -444,7 +444,7 @@ public:
     std::list<plasma::Vector<2, int>> m_playerZones;    // the zones around the local players
     std::list<plasma::Vector<2, int>> m_zoneRequests;   // those zones still without data
     std::list<plasma::Vector<2, int>> m_regionRequests; // their regions still without data (may repeat)
-    int m_viewDistance; // chunk-grid side (80); updateChunk indexes 32-column chunks modulo it
+    int m_viewDistance; // chunk-grid side (160, 80 in 32-bit builds); updateChunk indexes 32-column chunks modulo it
     Chunk *m_chunks;    // new[]; deleted by the destructor
     World m_world;
     CubeShader *m_shader;   // the constructor's second argument
