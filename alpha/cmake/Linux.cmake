@@ -24,12 +24,15 @@ target_include_directories(FreeImage PRIVATE "${FI}/Source/LibJXR/common/include
 target_compile_options(FreeImage PRIVATE -fPIC
  $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion>)
 
-target_sources(Server PRIVATE platform/linux/Thread.cpp)
+target_sources(Server PRIVATE platform/linux/Thread.cpp platform/linux/Rand.cpp)
 foreach(app Cube Server)
  # platform/linux comes first: its windows.h extends DXVK's.
  target_include_directories(${app} BEFORE PRIVATE platform/linux)
  target_include_directories(${app} PRIVATE include plasma/include platform)
  target_compile_options(${app} PRIVATE -fwrapv -fno-strict-aliasing -Wno-multichar)
+ # rand and srand as on Windows (platform/linux/Rand.h).
+ target_compile_options(${app} PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/Rand.h")
+ target_link_options(${app} PRIVATE -Wl,--wrap=rand -Wl,--wrap=srand)
  # MSVC keywords in declarations that do not include windows.h.
  target_compile_definitions(${app} PRIVATE "__stdcall=" "__int64=long long")
  target_link_libraries(${app} PRIVATE pugixml sqlite zlibstatic dxvk_headers Threads::Threads ${CMAKE_DL_LIBS})
@@ -61,5 +64,5 @@ else()
 endif()
 pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(GLU REQUIRED IMPORTED_TARGET glu)
-target_sources(Cube PRIVATE platform/linux/main.cpp platform/linux/Thread.cpp)
+target_sources(Cube PRIVATE platform/linux/main.cpp platform/linux/Thread.cpp platform/linux/Rand.cpp)
 target_link_libraries(Cube PRIVATE dxvk_d3d9 faudio PkgConfig::SDL3 PkgConfig::GLU)

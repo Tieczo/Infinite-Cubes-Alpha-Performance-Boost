@@ -10,6 +10,7 @@ this folder supplies the Windows parts it uses:
 | XAudio2 2.7                     | FAudio (`XAudio2_7.h`)                                  |
 | critical sections, threads, timers | `windows.h`, `Thread.cpp` (C++ standard library)     |
 | Winsock                         | POSIX sockets (`winsock2.h`)                            |
+| C runtime's rand, srand         | the same generator, per thread (`Rand.h`, `Rand.cpp`)   |
 | glu32 tessellator               | Mesa libGLU                                             |
 
 `windows.h` here extends DXVK-native's `windows.h` (found next in the include path), which declares the
