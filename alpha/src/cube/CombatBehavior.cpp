@@ -107,12 +107,12 @@ bool CombatBehavior::Update(Creature *creature, World *world, int elapsed, Serve
     }
     if (!target && !(entity.hostilityType == HostilityPet && entity.ownerId != 0) && m_targetDelay <= 0) {
         float nearestDistance = m_targetAcquisitionRadius * m_targetAcquisitionRadius;
-        for (std::map<long long, Creature *>::iterator it = world->m_creatures.begin(); it != world->m_creatures.end();
-             ++it) {
-            Creature *other = it->second;
+        // Each other creature is considered in turn (with the fast creature updates only those in the
+        // cells within the acquisition radius).
+        auto consider = [&](Creature *other) {
             if (!other || other == creature || other->m_entityData.hp <= 0 ||
                 other->m_entityData.hostilityType == HostilityPet)
-                continue;
+                return;
             const Creature::EntityData &candidate = other->m_entityData;
             plasma::Vector<3, float> offset(candidate.position - entity.position);
             float distance = offset.squaredLength();
@@ -134,6 +134,17 @@ bool CombatBehavior::Update(Creature *creature, World *world, int elapsed, Serve
                 nearestDistance = distance;
                 target = other;
             }
+        };
+        static std::vector<std::pair<long long, Creature *>> s_nearby;
+        if (world->m_fastCreatureUpdates &&
+            world->nearbyCreatures((float)entity.position[0], (float)entity.position[1], m_targetAcquisitionRadius,
+                                   s_nearby)) {
+            for (size_t i = 0; i < s_nearby.size(); i++)
+                consider(s_nearby[i].second);
+        } else {
+            for (std::map<long long, Creature *>::iterator it = world->m_creatures.begin();
+                 it != world->m_creatures.end(); ++it)
+                consider(it->second);
         }
         if (target) {
             creature->m_aggro[target->m_id] = 1.0f;

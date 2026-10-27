@@ -3,6 +3,7 @@
 #include "cube/WorldBlocks.h"
 
 #include <math.h>
+#include <algorithm>
 #include <stdlib.h>
 #include <sstream>
 
@@ -34,6 +35,10 @@ World::World(IDirect3DDevice9 *device, bool client)
       m_debugFlags(0),
       m_client(client),
       m_localPlayer(0),
+      m_creatureDistanceScale(1.0f),
+      m_fastCreatureUpdates(false),
+      m_creatureCellCount(0),
+      m_creatureCellExtent(0.0f),
       m_clock(0),
       m_time(12 * World::MillisecondsPerHour),
       m_day(0)
@@ -3908,6 +3913,59 @@ std::wstring World::generateCoordinateName(int x, int y)
     std::wstring name(prefixes[first % 20]);
     name += suffixes[second % 20];
     return name;
+}
+
+
+namespace {
+enum {
+    CreatureCellSize = 32
+}; // blocks per side of the cells of World::m_creatureCells
+long long creatureCellKey(int x, int y)
+{
+    return ((long long)x << 32) | (unsigned int)y;
+}
+}
+
+void World::buildCreatureCells()
+{
+    m_creatureCells.clear();
+    m_creatureCellExtent = 0.0f;
+    for (std::map<long long, Creature *>::iterator it = m_creatures.begin(); it != m_creatures.end(); it++) {
+        Creature *creature = it->second;
+        if (!creature)
+            continue;
+        int cellX = (int)floorf((float)creature->m_entityData.position[0] / CreatureCellSize);
+        int cellY = (int)floorf((float)creature->m_entityData.position[1] / CreatureCellSize);
+        m_creatureCells[creatureCellKey(cellX, cellY)].push_back(*it);
+        const plasma::Vector<3, float> &size = creature->m_entityData.appearance.size;
+        m_creatureCellExtent = std::max(m_creatureCellExtent, std::max(size[0], size[1]) + 1.0f);
+    }
+    m_creatureCellCount = m_creatures.size();
+}
+
+bool World::nearbyCreatures(float x, float y, float range, std::vector<std::pair<long long, Creature *>> &found)
+{
+    found.clear();
+    if (!m_creatureCellCount || m_creatureCellCount != m_creatures.size())
+        return false;
+    // One cell more on each side covers how far the creatures moved since the cells were made.
+    int x0 = (int)floorf((x - range) / CreatureCellSize) - 1;
+    int x1 = (int)floorf((x + range) / CreatureCellSize) + 1;
+    int y0 = (int)floorf((y - range) / CreatureCellSize) - 1;
+    int y1 = (int)floorf((y + range) / CreatureCellSize) + 1;
+    for (int cellX = x0; cellX <= x1; cellX++) {
+        for (int cellY = y0; cellY <= y1; cellY++) {
+            std::unordered_map<long long, std::vector<std::pair<long long, Creature *>>>::iterator cell =
+                m_creatureCells.find(creatureCellKey(cellX, cellY));
+            if (cell != m_creatureCells.end())
+                found.insert(found.end(), cell->second.begin(), cell->second.end());
+        }
+    }
+    std::sort(found.begin(), found.end(),
+              [](const std::pair<long long, Creature *> &a, const std::pair<long long, Creature *> &b) {
+                  return a.first < b.first;
+              });
+    return true;
 }
 
 }

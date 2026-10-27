@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -558,6 +559,22 @@ public:
     // The constructor client flag; while set, the world saves no zones or regions.
     bool m_client;
     Creature *m_localPlayer; // Initially null; assigned the local player by GameController.
+    // The creature distance option (1 = the original): spawn and despawn radii are multiplied by it,
+    // and creatures are brought to life from the zones within that reach of a player.
+    float m_creatureDistanceScale;
+    // The fast creature updates option: during the creatures' steps, pushing each other apart and
+    // looking for targets go through the creatures in the cells around a creature instead of all of
+    // them (the same creatures in the same order, minus those too far away to matter).
+    bool m_fastCreatureUpdates;
+    // Sorts the creatures into cells of CreatureCellSize blocks (at the start of the creatures' steps).
+    void buildCreatureCells();
+    // The creatures in the cells within range of (x, y), sorted by id like m_creatures; false when the
+    // cells are not in use or out of date (a creature was added since), and m_creatures must be gone
+    // through instead.
+    bool nearbyCreatures(float x, float y, float range, std::vector<std::pair<long long, Creature *>> &found);
+    std::unordered_map<long long, std::vector<std::pair<long long, Creature *>>> m_creatureCells;
+    size_t m_creatureCellCount;   // m_creatures' size when the cells were made; 0 when not in use
+    float m_creatureCellExtent;   // the largest horizontal size among the creatures (blocks)
     // Owned regions indexed by region coordinates; each spans 64-by-64 zones.
     Region *m_regions[0x400][0x400];
     RegionRecord *m_regionRecords[0x400][0x400]; // owned

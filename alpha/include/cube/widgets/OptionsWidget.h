@@ -30,6 +30,11 @@ public:
     void RenderDistanceDecrease();
     void RenderDistanceIncrease();
     void ShowFPSToggle();
+    void PlantDistanceDecrease();
+    void PlantDistanceIncrease();
+    void CreatureDistanceDecrease();
+    void CreatureDistanceIncrease();
+    void FastCreatureUpdatesToggle();
     void ResolutionDecrease();
     void ResolutionIncrease();
     void SoundVolumeDecrease();
@@ -62,6 +67,12 @@ public:
     plasma::Node *m_nextInvertY;
     plasma::Node *m_previousShowFPS;
     plasma::Node *m_nextShowFPS;
+    plasma::Node *m_previousPlantDistance;
+    plasma::Node *m_nextPlantDistance;
+    plasma::Node *m_previousCreatureDistance;
+    plasma::Node *m_nextCreatureDistance;
+    plasma::Node *m_previousFastCreatureUpdates;
+    plasma::Node *m_nextFastCreatureUpdates;
     plasma::Node *m_previousMinTimeStep;
     plasma::Node *m_nextMinTimeStep;
     plasma::Node *m_previousLanguage;

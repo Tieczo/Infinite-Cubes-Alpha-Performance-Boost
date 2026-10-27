@@ -500,6 +500,12 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
     float seconds = elapsed * 0.001f;
     std::list<Creature *> players;
     std::set<Zone *> playerZones;
+    // The zones whose spawns may come to life: those around the players, more with a larger creature
+    // distance (3 x 3 as in the original at 1).
+    std::set<Zone *> spawnZones;
+    int spawnZoneRange = 1;
+    if (m_creatureDistanceScale > 1.0f)
+        spawnZoneRange = (int)ceilf(150.0f * m_creatureDistanceScale / BlocksPerZone) + 1;
     // A level-2 pet egg (pet item 24) hatches (25).
     if (m_localPlayer && m_localPlayer->m_entityData.equipment.pet.category == ItemCategoryPet &&
         m_localPlayer->m_entityData.equipment.pet.id == PetItemEgg &&
@@ -541,6 +547,13 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                 Zone *zone = this->zone(x, y);
                 if (zone)
                     playerZones.insert(zone);
+            }
+        }
+        for (int x = zoneX - spawnZoneRange; x <= zoneX + spawnZoneRange; x++) {
+            for (int y = zoneY - spawnZoneRange; y <= zoneY + spawnZoneRange; y++) {
+                Zone *zone = this->zone(x, y);
+                if (zone)
+                    spawnZones.insert(zone);
             }
         }
         if (m_client)
@@ -824,7 +837,8 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                 if (nearest < 0.0f || distance < nearest)
                     nearest = distance;
             }
-            if (nearest > (creature->m_despawnDistance + 20.0f) * (creature->m_despawnDistance + 20.0f)) {
+            float despawnDistance = creature->m_despawnDistance * m_creatureDistanceScale + 20.0f;
+            if (nearest > despawnDistance * despawnDistance) {
                 despawned.push_back(it);
                 for (std::map<long long, Creature *>::iterator other = m_creatures.begin(); other != m_creatures.end();
                      other++) {
@@ -1124,7 +1138,7 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
     // get a world entry, and their spawns whose hours have come and that a player is near create their
     // creatures.
     if (!m_client && !m_name.empty()) {
-        for (std::set<Zone *>::iterator it = playerZones.begin(); it != playerZones.end(); it++) {
+        for (std::set<Zone *>::iterator it = spawnZones.begin(); it != spawnZones.end(); it++) {
             Zone *const &zone = *it;
             for (int i = 0; i < (int)zone->m_airships.size(); i++) {
                 Zone::Airship *record = zone->m_airships[i];
@@ -1156,7 +1170,7 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                     continue;
                 bool nearby = false;
                 for (std::list<Creature *>::iterator player = players.begin(); player != players.end(); player++) {
-                    float radius = spawn->spawnRadius;
+                    float radius = spawn->spawnRadius * m_creatureDistanceScale;
                     if (radius * radius >
                         plasma::Vector<3, float>((*player)->m_entityData.position - spawn->position).squaredLength()) {
                         nearby = true;
@@ -1277,7 +1291,12 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
         }
     }
 
-    // Every creature's step.
+    // Every creature's step. With the fast creature updates the creatures are first sorted into cells.
+    if (m_fastCreatureUpdates)
+        buildCreatureCells();
+    else
+        m_creatureCellCount = 0;
+    static std::vector<std::pair<long long, Creature *>> s_nearby; // nearbyCreatures' results
     for (std::map<long long, Creature *>::iterator it = m_creatures.begin(); it != m_creatures.end(); it++) {
         Creature *creature = it->second;
         if (!creature)
@@ -3938,17 +3957,17 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
         if (creature->m_entityData.hostilityType != HostilityAttackableObject &&
             creature->m_entityData.currentAbility != AbilitySit &&
             creature->m_entityData.currentAbility != AbilitySleep) {
-            for (std::map<long long, Creature *>::iterator other = m_creatures.begin(); other != m_creatures.end();
-                 other++) {
-                Creature *&obstacle = other->second;
+            // The same test for each other creature (with the fast creature updates only for those in
+            // the cells around this one).
+            auto pushFrom = [&](Creature *obstacle) {
                 if (!obstacle || obstacle == creature)
-                    continue;
+                    return;
                 if (creature->m_entityData.hostilityType == HostilityPlayer &&
                     obstacle->m_entityData.hostilityType != HostilityEnemy &&
                     obstacle->m_entityData.hostilityType != HostilityAttackableObject)
-                    continue;
+                    return;
                 if (0.0f >= obstacle->m_entityData.hp)
-                    continue;
+                    return;
                 plasma::Vector<3, float> extent = obstacle->m_entityData.appearance.size;
                 if (obstacle->m_entityData.hostilityType != HostilityAttackableObject)
                     extent += plasma::Vector<3, float>(plasma::Vector<3, int>(1, 1, 0));
@@ -3961,15 +3980,25 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                     !(position[1] - size[1] * 0.5f < theirs[1] + extent[1] * 0.5f) ||
                     !(position[2] + size[2] * 0.5f >= theirs[2] - extent[2] * 0.5f) ||
                     !(position[2] - size[2] * 0.5f < theirs[2] + extent[2] * 0.5f))
-                    continue;
+                    return;
                 plasma::Vector<3, float> away(position - theirs);
                 away[2] = 0.0f;
                 if (!(away.squaredLength() > 0.0f))
-                    continue;
+                    return;
                 away.normalize();
                 if (creature->m_entityData.stunTime > 0)
                     away *= 0.1f;
                 step += seconds * 5.0f * obstacle->m_entityData.appearance.size[0] / width * away;
+            };
+            float reach = std::max(width, size[1]) * 0.5f + m_creatureCellExtent * 0.5f + 1.0f;
+            if (m_fastCreatureUpdates && nearbyCreatures((float)creature->m_entityData.position[0],
+                                                         (float)creature->m_entityData.position[1], reach, s_nearby)) {
+                for (size_t i = 0; i < s_nearby.size(); i++)
+                    pushFrom(s_nearby[i].second);
+            } else {
+                for (std::map<long long, Creature *>::iterator other = m_creatures.begin(); other != m_creatures.end();
+                     other++)
+                    pushFrom(other->second);
             }
         }
         // The step is taken in parts of at most a block.

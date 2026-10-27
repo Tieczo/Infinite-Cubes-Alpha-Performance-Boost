@@ -1850,7 +1850,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
         m_optionsPanel = m_blackWidget->instance(m_gameScreen);
         m_optionsPanel->setTransformation(m_optionsPanel->transformation()->clone());
         m_optionsPanel->setDisplay(m_optionsPanel->display()->clone());
-        m_optionsPanel->widget()->resizeTo(450.0f, 470.0f, true); // 440 before the Show FPS row
+        m_optionsPanel->widget()->resizeTo(450.0f, 560.0f, true); // 440 before the rows Show FPS to Fast Creature Updates
         m_optionsPanel->setVisible(false);
         plasma::Node *optionsNode = engine->createNode(0, 0, 0, 0);
         m_optionsWidget =
@@ -6009,6 +6009,9 @@ void GameController::update(int milliseconds)
 // the colour. The temperature shown is -20 + 60 times the world's blended temperature (degrees).
 // The lights have a radius in blocks, an RGB colour and a duration.
 {
+    // The creature distance option reaches the world's spawning and despawning.
+    m_world.m_creatureDistanceScale = m_options.creatureDistance / 100.0f;
+    m_world.m_fastCreatureUpdates = m_options.fastCreatureUpdates != 0;
     // A lost connection ends the session. The start menu's panel moves between the title screen and
     // the game screen.
     if (m_connected && !m_socket)

@@ -36,7 +36,10 @@ Options::Options()
       invertY(0),
       language(0),
       minTimeStep(DefaultMinTimeStep),
-      showFPS(0)
+      showFPS(0),
+      plantDistance(100),
+      creatureDistance(100),
+      fastCreatureUpdates(1)
 {}
 
 void Options::load()
@@ -73,7 +76,15 @@ void Options::load()
             file >> minTimeStep;
         if (key == "showFPS")
             file >> showFPS;
+        if (key == "plantDistance")
+            file >> plantDistance;
+        if (key == "creatureDistance")
+            file >> creatureDistance;
+        if (key == "fastCreatureUpdates")
+            file >> fastCreatureUpdates;
     }
+    if (creatureDistance > MaximumCreatureDistance)
+        creatureDistance = MaximumCreatureDistance;
 }
 
 void Options::save()
@@ -92,6 +103,9 @@ void Options::save()
     file << "invertY " << invertY << std::endl;
     file << "minTimeStep " << minTimeStep << std::endl;
     file << "showFPS " << showFPS << std::endl;
+    file << "plantDistance " << plantDistance << std::endl;
+    file << "creatureDistance " << creatureDistance << std::endl;
+    file << "fastCreatureUpdates " << fastCreatureUpdates << std::endl;
 }
 
 }

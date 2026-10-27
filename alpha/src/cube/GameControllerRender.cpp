@@ -291,9 +291,10 @@ void GameController::render()
     m_shader->setDarknessColor(plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f));
     m_shader->setShininess(0.0f);
     m_shader->setSky(skyColor0, skyColor1, skyColor2);
-    // The distances in blocks at which the plants fade out and up to which the creatures are drawn.
-    float plantFadeEnd = m_viewRadius * 0.2f;
-    float creatureRange = m_viewRadius * 0.3f;
+    // The distances in blocks at which the plants fade out and up to which the creatures are drawn,
+    // times the plant and creature distance options (100% = 128 and 192 blocks, as in the original).
+    float plantFadeEnd = m_viewRadius * 0.2f * (m_options.plantDistance / 100.0f);
+    float creatureRange = m_viewRadius * 0.3f * (m_options.creatureDistance / 100.0f);
     m_shader->setFogScale(m_loadedMeshRadius);
     m_shader->setFogGradientTranslation(m_mapOpen ? 90.0f : m_cameraRotation[0]);
     plasma::Vector<4, float> pointLightPositions[16];

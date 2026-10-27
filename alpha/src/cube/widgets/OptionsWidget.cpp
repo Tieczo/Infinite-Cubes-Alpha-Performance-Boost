@@ -49,6 +49,15 @@ enum {
     MinimumRenderDistance = 25
 };
 enum {
+    DetailDistanceStep = 25
+}; // the plant and creature distances
+enum {
+    MinimumDetailDistance = 100
+};
+enum {
+    MaximumDetailDistance = 800
+}; // the plant distance's maximum (the creature distance's is in Options.h)
+enum {
     MaximumRenderDistance = sizeof(void *) == 4 ? 200 : 400 // 32-bit builds may use 4 GB at most
 };
 }
@@ -181,6 +190,36 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextShowFPS->setDisplay(rightButton->m_display->clone());
     m_nextShowFPS->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
                                  &OptionsWidget::ShowFPSToggle, true);
+    m_previousPlantDistance = leftButton->instance(node);
+    m_previousPlantDistance->setTransformation(leftButton->m_transformation->clone());
+    m_previousPlantDistance->setDisplay(leftButton->m_display->clone());
+    m_previousPlantDistance->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                           &OptionsWidget::PlantDistanceDecrease, true);
+    m_nextPlantDistance = rightButton->instance(node);
+    m_nextPlantDistance->setTransformation(rightButton->m_transformation->clone());
+    m_nextPlantDistance->setDisplay(rightButton->m_display->clone());
+    m_nextPlantDistance->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                       &OptionsWidget::PlantDistanceIncrease, true);
+    m_previousCreatureDistance = leftButton->instance(node);
+    m_previousCreatureDistance->setTransformation(leftButton->m_transformation->clone());
+    m_previousCreatureDistance->setDisplay(leftButton->m_display->clone());
+    m_previousCreatureDistance->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                              &OptionsWidget::CreatureDistanceDecrease, true);
+    m_nextCreatureDistance = rightButton->instance(node);
+    m_nextCreatureDistance->setTransformation(rightButton->m_transformation->clone());
+    m_nextCreatureDistance->setDisplay(rightButton->m_display->clone());
+    m_nextCreatureDistance->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                          &OptionsWidget::CreatureDistanceIncrease, true);
+    m_previousFastCreatureUpdates = leftButton->instance(node);
+    m_previousFastCreatureUpdates->setTransformation(leftButton->m_transformation->clone());
+    m_previousFastCreatureUpdates->setDisplay(leftButton->m_display->clone());
+    m_previousFastCreatureUpdates->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                                 &OptionsWidget::FastCreatureUpdatesToggle, true);
+    m_nextFastCreatureUpdates = rightButton->instance(node);
+    m_nextFastCreatureUpdates->setTransformation(rightButton->m_transformation->clone());
+    m_nextFastCreatureUpdates->setDisplay(rightButton->m_display->clone());
+    m_nextFastCreatureUpdates->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                             &OptionsWidget::FastCreatureUpdatesToggle, true);
     m_applyButton = actionButtonTemplate->clone(node);
     m_okButton = actionButtonTemplate->clone(node);
     m_cancelButton = actionButtonTemplate->clone(node);
@@ -475,6 +514,72 @@ void OptionsWidget::draw()
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
     text.str(L"");
+    text << m_options.plantDistance << L"%";
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Plant Distance", 0.0f, 0.0f, 15.0f, 387.0f, 12.0f, 3.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Plant Distance", 0.0f, 0.0f, 15.0f, 387.0f, 12.0f, 0.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 387.0f, 12.0f, 3.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 387.0f, 12.0f, 0.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    text.str(L"");
+    text << m_options.creatureDistance << L"%";
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Creature Distance", 0.0f, 0.0f, 15.0f, 417.0f, 12.0f, 3.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Creature Distance", 0.0f, 0.0f, 15.0f, 417.0f, 12.0f, 0.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 417.0f, 12.0f, 3.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 417.0f, 12.0f, 0.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    text.str(L"");
+    text << (m_options.fastCreatureUpdates ? "Yes" : "No");
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Creature Updates", 0.0f, 0.0f, 15.0f, 447.0f, 12.0f, 3.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Creature Updates", 0.0f, 0.0f, 15.0f, 447.0f, 12.0f, 0.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 447.0f, 12.0f, 3.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 447.0f, 12.0f, 0.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    text.str(L"");
     m_previousFullscreen->display()->setFillColor(m_previousFullscreen->widget()->isPointerOver()
                                                       ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                       : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
@@ -547,6 +652,24 @@ void OptionsWidget::draw()
     m_nextShowFPS->display()->setFillColor(m_nextShowFPS->widget()->isPointerOver()
                                                ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_previousPlantDistance->display()->setFillColor(m_previousPlantDistance->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_nextPlantDistance->display()->setFillColor(m_nextPlantDistance->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_previousCreatureDistance->display()->setFillColor(m_previousCreatureDistance->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_nextCreatureDistance->display()->setFillColor(m_nextCreatureDistance->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_previousFastCreatureUpdates->display()->setFillColor(m_previousFastCreatureUpdates->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_nextFastCreatureUpdates->display()->setFillColor(m_nextFastCreatureUpdates->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
 }
 
 void OptionsWidget::AntiAliasingDecrease()
@@ -624,6 +747,39 @@ void OptionsWidget::FullscreenIncrease()
 void OptionsWidget::InvertYToggle()
 {
     m_options.invertY = !m_options.invertY;
+}
+
+void OptionsWidget::PlantDistanceDecrease()
+{
+    m_options.plantDistance -= DetailDistanceStep;
+    if (m_options.plantDistance < MinimumDetailDistance)
+        m_options.plantDistance = MinimumDetailDistance;
+}
+
+void OptionsWidget::PlantDistanceIncrease()
+{
+    m_options.plantDistance += DetailDistanceStep;
+    if (m_options.plantDistance > MaximumDetailDistance)
+        m_options.plantDistance = MaximumDetailDistance;
+}
+
+void OptionsWidget::CreatureDistanceDecrease()
+{
+    m_options.creatureDistance -= DetailDistanceStep;
+    if (m_options.creatureDistance < MinimumDetailDistance)
+        m_options.creatureDistance = MinimumDetailDistance;
+}
+
+void OptionsWidget::CreatureDistanceIncrease()
+{
+    m_options.creatureDistance += DetailDistanceStep;
+    if (m_options.creatureDistance > MaximumCreatureDistance)
+        m_options.creatureDistance = MaximumCreatureDistance;
+}
+
+void OptionsWidget::FastCreatureUpdatesToggle()
+{
+    m_options.fastCreatureUpdates = !m_options.fastCreatureUpdates;
 }
 
 void OptionsWidget::ShowFPSToggle()
@@ -727,6 +883,18 @@ void OptionsWidget::resized()
     m_previousShowFPS->m_widget->moveTo(240.0f, 342.0f, true);
     button = m_nextShowFPS->m_widget;
     button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 342.0f, true);
+
+    m_previousPlantDistance->m_widget->moveTo(240.0f, 372.0f, true);
+    button = m_nextPlantDistance->m_widget;
+    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 372.0f, true);
+
+    m_previousCreatureDistance->m_widget->moveTo(240.0f, 402.0f, true);
+    button = m_nextCreatureDistance->m_widget;
+    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 402.0f, true);
+
+    m_previousFastCreatureUpdates->m_widget->moveTo(240.0f, 432.0f, true);
+    button = m_nextFastCreatureUpdates->m_widget;
+    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 432.0f, true);
 
     button = m_applyButton->m_widget;
     button->moveTo(20.0f, getViewHeight() - button->getViewHeight() - 20.0f, true);
