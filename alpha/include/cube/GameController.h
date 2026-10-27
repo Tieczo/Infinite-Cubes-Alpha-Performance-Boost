@@ -4,7 +4,6 @@
 #include <windows.h>
 #include <list>
 #include <map>
-#include <unordered_map>
 #include <string>
 #include <vector>
 #include "plasma/Matrix.h"
@@ -295,19 +294,6 @@ public:
     // Shades a face corner using neighboring block light and occlusion, with light stored in w. Plain colors are returned unchanged.
     plasma::Vector<4, float> shade(int x, int y, int z, const plasma::Vector<4, float> &color,
                                    const plasma::Vector<3, int> &normal, bool plain);
-    // shade's two halves: the corner's brightness and openness (from the blocks around it, for the
-    // face's normal), and the colour they give.
-    plasma::Vector<2, float> shadeCorner(int x, int y, int z, const plasma::Vector<3, int> &normal);
-    static plasma::Vector<4, float> shadeColor(const plasma::Vector<4, float> &color, float brightness, float openness);
-    // A chunk's corners already shaded, by corner (relative to the chunk's origin) and normal: a corner
-    // shared by several faces of the same direction is worked out once (updateChunk).
-    struct CornerShades {
-        int x0;
-        int y0;
-        std::unordered_map<unsigned long long, plasma::Vector<2, float>> values;
-    };
-    plasma::Vector<4, float> shadeCached(CornerShades &cache, int x, int y, int z, const plasma::Vector<4, float> &color,
-                                         const plasma::Vector<3, int> &normal, bool plain);
     Item *getHoveredFormula();
     plasma::Vector<2, int> getHoveredSlot();
     Item *getHoveredVendorItem();

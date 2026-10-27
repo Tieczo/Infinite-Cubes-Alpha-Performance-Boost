@@ -4,77 +4,12 @@
 #include <math.h>
 namespace cube {
 
-// The share of each block of the 6 x 6 x 6 cube around a corner, which counts less with its distance.
-struct CornerShares {
-    float share[6][6][6];
-    CornerShares()
-    {
-        for (int dx = -3; dx < 3; dx++) {
-            for (int dy = -3; dy < 3; dy++) {
-                for (int dz = -3; dz < 3; dz++) {
-                    float distance = (float)fabs(dx + 0.5f);
-                    float distanceY = (float)fabs(dy + 0.5f);
-                    if (distanceY > distance)
-                        distance = distanceY;
-                    float distanceZ = (float)fabs(dz + 0.5f);
-                    if (distanceZ > distance)
-                        distance = distanceZ;
-                    share[dx + 3][dy + 3][dz + 3] = (3.0f - distance) / 3.0f;
-                }
-            }
-        }
-    }
-};
-
-// How a block around a corner counts for shadeCorner: its light level and whether it is empty; false
-// when it does not count.
-static inline bool cornerBlock(const Block &block, int &level, float &empty)
-{
-    int type = block.type & ~BlockFlagMask;
-    empty = 1.0f;
-    if (type == 13) {
-        level = 255;
-    } else if (type != BlockAir && type != BlockWater) {
-        level = MinimumBlockLight;
-        empty = 0.0f;
-    } else {
-        if (block.color[0] < MinimumBlockLight)
-            level = MinimumBlockLight;
-        else
-            level = block.color[0];
-        if (level < 0)
-            return false;
-    }
-    return true;
-}
-
-
 plasma::Vector<4, float> GameController::shade(int x, int y, int z, const plasma::Vector<4, float> &color,
                                                const plasma::Vector<3, int> &normal, bool plain)
 {
     if (plain)
         return color;
-    plasma::Vector<2, float> corner = shadeCorner(x, y, z, normal);
-    return shadeColor(color, corner[0], corner[1]);
-}
 
-plasma::Vector<4, float> GameController::shadeCached(CornerShades &cache, int x, int y, int z,
-                                                     const plasma::Vector<4, float> &color,
-                                                     const plasma::Vector<3, int> &normal, bool plain)
-{
-    if (plain)
-        return color;
-    int direction = normal[0] < 0 ? 0 : normal[0] > 0 ? 1 : normal[1] < 0 ? 2 : normal[1] > 0 ? 3 : normal[2] < 0 ? 4 : normal[2] > 0 ? 5 : 6;
-    unsigned long long key = (unsigned long long)((x - cache.x0) & 0xff) | (unsigned long long)((y - cache.y0) & 0xff) << 8 |
-                             (unsigned long long)(unsigned int)(z + 0x100000) << 16 | (unsigned long long)direction << 48;
-    std::unordered_map<unsigned long long, plasma::Vector<2, float>>::iterator found = cache.values.find(key);
-    if (found == cache.values.end())
-        found = cache.values.insert(std::make_pair(key, shadeCorner(x, y, z, normal))).first;
-    return shadeColor(color, found->second[0], found->second[1]);
-}
-
-plasma::Vector<2, float> GameController::shadeCorner(int x, int y, int z, const plasma::Vector<3, int> &normal)
-{
     float brightness = 0.0f;
     float openness = 0.0f;
 
@@ -107,20 +42,38 @@ plasma::Vector<2, float> GameController::shadeCorner(int x, int y, int z, const 
         to[2] = 0;
     }
 
-    // Each block counts less with its distance from the corner (the shares are worked out once, by the
-    // block's place around the corner).
-    static const CornerShares s_shares;
+    // Each block counts less with its distance from the corner.
     float weight = 0.0f;
     float light = 0.0f;
     float open = 0.0f;
     for (int dx = from[0]; dx < to[0]; dx++) {
         for (int dy = from[1]; dy < to[1]; dy++) {
             for (int dz = from[2]; dz < to[2]; dz++) {
-                float empty;
+                const Block &block = m_world.getBlock(x + dx, y + dy, z + dz, 0);
+                int type = block.type & ~BlockFlagMask;
+                float empty = 1.0f;
                 int level;
-                if (!cornerBlock(m_world.getBlock(x + dx, y + dy, z + dz, 0), level, empty))
-                    continue;
-                float share = s_shares.share[dx + 3][dy + 3][dz + 3];
+                if (type == 13) {
+                    level = 255;
+                } else if (type != BlockAir && type != BlockWater) {
+                    level = MinimumBlockLight;
+                    empty = 0.0f;
+                } else {
+                    if (block.color[0] < MinimumBlockLight)
+                        level = MinimumBlockLight;
+                    else
+                        level = block.color[0];
+                    if (level < 0)
+                        continue;
+                }
+                float distance = (float)fabs(dx + 0.5f);
+                float distanceY = (float)fabs(dy + 0.5f);
+                if (distanceY > distance)
+                    distance = distanceY;
+                float distanceZ = (float)fabs(dz + 0.5f);
+                if (distanceZ > distance)
+                    distance = distanceZ;
+                float share = (3.0f - distance) / 3.0f;
                 light += level * share;
                 open += share * empty;
                 weight += share;
@@ -131,11 +84,6 @@ plasma::Vector<2, float> GameController::shadeCorner(int x, int y, int z, const 
         brightness = light / (weight * 255.0f);
         openness = open / weight;
     }
-    return plasma::Vector<2, float>(brightness, openness);
-}
-
-plasma::Vector<4, float> GameController::shadeColor(const plasma::Vector<4, float> &color, float brightness, float openness)
-{
 
     // The colour greyed: a tenth of it, pushed away from its luminance ten times over (the luminance
     // with the weights 0.3, 0.59 and 0.11).
