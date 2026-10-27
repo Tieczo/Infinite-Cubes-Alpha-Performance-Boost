@@ -279,6 +279,8 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
       m_mapZoom(1.0f),
       m_targetMapZoom(1.0f),
       m_loadedMeshRadius(0),
+      m_cloudFrame(0),
+      m_cloudSeed(-1),
       m_screenShake(0),
       m_viewDistance(MaximumChunkGridSide),
       m_chunks(0),

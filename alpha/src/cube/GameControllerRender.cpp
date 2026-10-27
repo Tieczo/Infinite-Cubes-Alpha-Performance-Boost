@@ -93,6 +93,13 @@ static int callPeriod(const plasma::Vector<3, Fixed> &position, int time, int pe
     return ((int)position[0] % period + (int)(position[1] + Fixed(333)) % period + time) / period;
 }
 
+// Every cloud cell is worked out again once in this many frames (GameController::m_cloudCells).
+namespace {
+enum {
+    CloudRefreshFrames = 8
+};
+}
+
 // Renders one frame after update: swaps in completed chunk meshes, gathers visible chunks and lights, draws the sky or map or waiting screen, then clouds, chunks, creatures, objects, effects, water and interface. Light radii are in blocks; colors are RGB or RGBA in the range zero to one. Model turning rates use degrees per millisecond, and interface positions use pixels. The normal sky clear color is opaque blue; player-only screenshots use white.
 void GameController::render()
 {
@@ -769,32 +776,62 @@ void GameController::render()
         int cloudCells = 6;
         if (m_options.renderDistance > 100)
             cloudCells = std::max(6, (int)std::ceil((m_loadedMeshRadius * 1.5f + cloudHalfDiagonal) / 200.0f) + 1);
+        if (m_cloudSeed != m_world.getSeed() || m_cloudWorldName != m_world.getName()) {
+            m_cloudCells.clear();
+            m_cloudSeed = m_world.getSeed();
+            m_cloudWorldName = m_world.getName();
+        }
+        m_cloudFrame++;
+        int cameraCellX = (int)camera[0] / 200;
+        int cameraCellY = (int)camera[1] / 200;
         for (int i = -cloudCells; i <= cloudCells; i++) {
             for (int j = -cloudCells; j <= cloudCells; j++) {
-                int cellX = (int)camera[0] / 200 + i;
-                int cellY = (int)camera[1] / 200 + j;
-                float chance = (noise((double)cellX, (double)cellY) + 1.0f) * 0.5f;
-                if (chance >= m_world.blendedHumidity(cellX, cellY) * 0.8f)
+                int cellX = cameraCellX + i;
+                int cellY = cameraCellY + j;
+                CloudCell &cell = m_cloudCells[std::make_pair(cellX, cellY)];
+                if (!cell.known || ((unsigned)(cellX * 3 + cellY) + m_cloudFrame) % CloudRefreshFrames == 0) {
+                    cell.known = true;
+                    cell.cloud = false;
+                    float chance = (noise((double)cellX, (double)cellY) + 1.0f) * 0.5f;
+                    if (chance >= m_world.blendedHumidity(cellX, cellY) * 0.8f)
+                        continue;
+                    plasma::Vector<3, Fixed> position(Fixed(cellX * 200), Fixed((cellX % 2 + cellY * 2) * 100),
+                                                      Fixed(0));
+                    if (0.3f > m_world.blendedHumidity((int)position[0], (int)position[1]))
+                        continue;
+                    float lift = m_world.vegetationDensity((int)position[0], (int)position[1], 0);
+                    position[2] = Fixed(m_world.terrainHeight((int)position[0], (int)position[1], 0) + lift * 100.0f);
+                    if (position[2] < 0)
+                        position[2] = Fixed(0);
+                    // The first coordinate uses the cell's x twice; the second uses its y.
+                    position[2] += Fixed(noise((double)(cellX * 16 + cellX), (double)(cellY * 19)) * 50.0f + 170.0f);
+                    cell.position = position;
+                    cell.scale = noise((double)(cellX * 16 - cellX), (double)(cellY * 23)) * 2.0f + 7.0f;
+                    cell.cloud = true;
+                }
+                if (!cell.cloud)
                     continue;
-                plasma::Vector<3, Fixed> position(Fixed(cellX * 200), Fixed((cellX % 2 + cellY * 2) * 100), Fixed(0));
-                if (0.3f > m_world.blendedHumidity((int)position[0], (int)position[1]))
-                    continue;
-                float lift = m_world.vegetationDensity((int)position[0], (int)position[1], 0);
-                position[2] = Fixed(m_world.terrainHeight((int)position[0], (int)position[1], 0) + lift * 100.0f);
-                if (position[2] < 0)
-                    position[2] = Fixed(0);
-                // The first coordinate uses the cell's x twice; the second uses its y.
-                position[2] += Fixed(noise((double)(cellX * 16 + cellX), (double)(cellY * 19)) * 50.0f + 170.0f);
+                const plasma::Vector<3, Fixed> &position = cell.position;
+                float scale = cell.scale;
                 plasma::Matrix<float> cloudModel;
                 cloudModel.identity();
                 cloudModel.translate(plasma::Vector<3, float>(
                     position + plasma::Vector<3, Fixed>(m_drawOriginX, m_drawOriginY, Fixed(0))));
-                float scale = noise((double)(cellX * 16 - cellX), (double)(cellY * 23)) * 2.0f + 7.0f;
                 cloudModel.scale(scale, scale, scale);
                 cloudModel.rotateZ((float)((cellY + cellX) * 90));
                 cloudModel.translate(cloud->sizeX() * -0.5f, cloud->sizeY() * -0.5f, 0.0f);
                 m_shader->setMatrices(cloudModel, view, m_projectionMatrix);
                 cloud->draw();
+            }
+        }
+        // Now and then the cells well outside the grid are dropped.
+        if (m_cloudFrame % 256 == 0) {
+            for (std::map<std::pair<int, int>, CloudCell>::iterator it = m_cloudCells.begin(); it != m_cloudCells.end();) {
+                if (std::abs(it->first.first - cameraCellX) > cloudCells + 2 ||
+                    std::abs(it->first.second - cameraCellY) > cloudCells + 2)
+                    it = m_cloudCells.erase(it);
+                else
+                    ++it;
             }
         }
     }

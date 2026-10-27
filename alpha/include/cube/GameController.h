@@ -413,6 +413,19 @@ public:
     float m_actualCameraDistance; // camera distance after terrain collision (update); zero puts the camera at its focus
     float m_viewRadius;           // half the 100% view square in blocks (ChunkGridSide * 16)
     float m_loadedMeshRadius;     // Smoothed loaded-mesh radius minus 22.4 blocks; fog adds that distance back.
+    // The clouds' grid cells (render), by cell: whether the cell has a cloud, where and how large. Each
+    // cell is worked out again every CloudRefreshFrames frames, in turn, as the world's records load;
+    // cleared for another world, and cells far from the camera are dropped.
+    struct CloudCell {
+        bool known;
+        bool cloud;
+        plasma::Vector<3, Fixed> position;
+        float scale;
+    };
+    std::map<std::pair<int, int>, CloudCell> m_cloudCells;
+    unsigned m_cloudFrame;     // counts rendered frames for the refresh turns
+    int m_cloudSeed;           // the world m_cloudCells belongs to
+    std::string m_cloudWorldName;
     // Draw positions relative to the negative camera focus to keep view calculations in small floats.
     Fixed m_drawOriginX;                  // minus m_cameraFocus's x (update): the origin things are drawn relative to
     Fixed m_drawOriginY;                  // minus m_cameraFocus's y
