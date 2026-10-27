@@ -9799,7 +9799,12 @@ void GameController::updateChunk(int x, int y)
     waterIndices.resize(slices);
 
     // The faces: for every block of every column, a quad towards each neighbour that leaves it open,
-    // each corner shaded.
+    // each corner shaded. Shading a corner reads up to 36 blocks; a corner shared by several faces of
+    // the same direction is worked out once.
+    static CornerShades cornerShades;
+    cornerShades.x0 = x0;
+    cornerShades.y0 = y0;
+    cornerShades.values.clear();
     typedef plasma::Vector<3, int> Normal;
     Zone *zone = m_world.zone(x0 / BlocksPerZone, y0 / BlocksPerZone);
     for (int bx = x0; bx < x0 + 32; bx++) {
@@ -9867,76 +9872,76 @@ void GameController::updateChunk(int x, int y)
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase),
                                                      Normal(-1, 0, 0),
-                                                     shade(bx, by, z, color, Normal(-1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx, by, z, color, Normal(-1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase + 1),
                                                      Normal(-1, 0, 0),
-                                                     shade(bx, by, z + 1, color, Normal(-1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx, by, z + 1, color, Normal(-1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase + 1),
                                                      Normal(-1, 0, 0),
-                                                     shade(bx, by + 1, z + 1, color, Normal(-1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z + 1, color, Normal(-1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase),
                                                      Normal(-1, 0, 0),
-                                                     shade(bx, by + 1, z, color, Normal(-1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z, color, Normal(-1, 0, 0), false)));
                 }
                 if (isFaceOpen(type, m_world.getBlock(bx + 1, by, z, 0).blockType())) {
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase),
                                                      Normal(1, 0, 0),
-                                                     shade(bx + 1, by, z, color, Normal(1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z, color, Normal(1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase),
                                                      Normal(1, 0, 0),
-                                                     shade(bx + 1, by + 1, z, color, Normal(1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z, color, Normal(1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase + 1),
                                                      Normal(1, 0, 0),
-                                                     shade(bx + 1, by + 1, z + 1, color, Normal(1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z + 1, color, Normal(1, 0, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase + 1),
                                                      Normal(1, 0, 0),
-                                                     shade(bx + 1, by, z + 1, color, Normal(1, 0, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z + 1, color, Normal(1, 0, 0), false)));
                 }
                 if (isFaceOpen(type, m_world.getBlock(bx, by - 1, z, 0).blockType())) {
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase),
                                                      Normal(0, -1, 0),
-                                                     shade(bx, by, z, color, Normal(0, -1, 0), false)));
+                                                     shadeCached(cornerShades, bx, by, z, color, Normal(0, -1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase),
                                                      Normal(0, -1, 0),
-                                                     shade(bx + 1, by, z, color, Normal(0, -1, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z, color, Normal(0, -1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase + 1),
                                                      Normal(0, -1, 0),
-                                                     shade(bx + 1, by, z + 1, color, Normal(0, -1, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z + 1, color, Normal(0, -1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase + 1),
                                                      Normal(0, -1, 0),
-                                                     shade(bx, by, z + 1, color, Normal(0, -1, 0), false)));
+                                                     shadeCached(cornerShades, bx, by, z + 1, color, Normal(0, -1, 0), false)));
                 }
                 if (isFaceOpen(type, m_world.getBlock(bx, by + 1, z, 0).blockType())) {
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase),
                                                      Normal(0, 1, 0),
-                                                     shade(bx, by + 1, z, color, Normal(0, 1, 0), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z, color, Normal(0, 1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase + 1),
                                                      Normal(0, 1, 0),
-                                                     shade(bx, by + 1, z + 1, color, Normal(0, 1, 0), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z + 1, color, Normal(0, 1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase + 1),
                                                      Normal(0, 1, 0),
-                                                     shade(bx + 1, by + 1, z + 1, color, Normal(0, 1, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z + 1, color, Normal(0, 1, 0), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase),
                                                      Normal(0, 1, 0),
-                                                     shade(bx + 1, by + 1, z, color, Normal(0, 1, 0), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z, color, Normal(0, 1, 0), false)));
                 }
                 if (isFaceOpen(type, m_world.getBlock(bx, by, z - 1, 0).blockType())) {
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase),
                                                      Normal(0, 0, -1),
-                                                     shade(bx, by, z, color, Normal(0, 0, -1), false)));
+                                                     shadeCached(cornerShades, bx, by, z, color, Normal(0, 0, -1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase),
                                                      Normal(0, 0, -1),
-                                                     shade(bx, by + 1, z, color, Normal(0, 0, -1), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z, color, Normal(0, 0, -1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase),
                                                      Normal(0, 0, -1),
-                                                     shade(bx + 1, by + 1, z, color, Normal(0, 0, -1), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z, color, Normal(0, 0, -1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase),
                                                      Normal(0, 0, -1),
-                                                     shade(bx + 1, by, z, color, Normal(0, 0, -1), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z, color, Normal(0, 0, -1), false)));
                 }
                 if (isFaceOpen(type, m_world.getBlock(bx, by, z + 1, 0).blockType())) {
                     // Wet ground under the open carries a film of water.
@@ -9944,34 +9949,34 @@ void GameController::updateChunk(int x, int y)
                         addQuad(waterIndices[slice], vertices[slice].size());
                         vertices[slice].push_back(
                             Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase + 1), Normal(0, 0, 1),
-                                   shade(bx, by, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
+                                   shadeCached(cornerShades, bx, by, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
                                          Normal(0, 0, 1), false)));
                         vertices[slice].push_back(
                             Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase + 1), Normal(0, 0, 1),
-                                   shade(bx + 1, by, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
+                                   shadeCached(cornerShades, bx + 1, by, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
                                          Normal(0, 0, 1), false)));
                         vertices[slice].push_back(
                             Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase + 1), Normal(0, 0, 1),
-                                   shade(bx + 1, by + 1, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
+                                   shadeCached(cornerShades, bx + 1, by + 1, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
                                          Normal(0, 0, 1), false)));
                         vertices[slice].push_back(
                             Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase + 1), Normal(0, 0, 1),
-                                   shade(bx, by + 1, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
+                                   shadeCached(cornerShades, bx, by + 1, z + 1, plasma::Vector<4, float>(0.0f, 0.0f, 1.0f, 1.0f),
                                          Normal(0, 0, 1), false)));
                     }
                     addQuad(*indices, vertices[slice].size());
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY, z - sliceBase + 1),
                                                      Normal(0, 0, 1),
-                                                     shade(bx, by, z + 1, color, Normal(0, 0, 1), false)));
+                                                     shadeCached(cornerShades, bx, by, z + 1, color, Normal(0, 0, 1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY, z - sliceBase + 1),
                                                      Normal(0, 0, 1),
-                                                     shade(bx + 1, by, z + 1, color, Normal(0, 0, 1), false)));
+                                                     shadeCached(cornerShades, bx + 1, by, z + 1, color, Normal(0, 0, 1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX + 1, localY + 1, z - sliceBase + 1),
                                                      Normal(0, 0, 1),
-                                                     shade(bx + 1, by + 1, z + 1, color, Normal(0, 0, 1), false)));
+                                                     shadeCached(cornerShades, bx + 1, by + 1, z + 1, color, Normal(0, 0, 1), false)));
                     vertices[slice].push_back(Vertex(plasma::Vector<3, int>(localX, localY + 1, z - sliceBase + 1),
                                                      Normal(0, 0, 1),
-                                                     shade(bx, by + 1, z + 1, color, Normal(0, 0, 1), false)));
+                                                     shadeCached(cornerShades, bx, by + 1, z + 1, color, Normal(0, 0, 1), false)));
                 }
             }
         }
