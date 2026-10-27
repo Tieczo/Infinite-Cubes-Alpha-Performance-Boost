@@ -3,6 +3,7 @@
 #include "cube/WorldDimensions.h"
 // Renders the world, creatures, effects and interface, with helpers for smoothing and cube effects.
 #include <algorithm>
+#include <cmath>
 #include "cube/GameController.h"
 #include "cube/WorldBlocks.h"
 #include "cube/Chunk.h"
@@ -747,7 +748,10 @@ void GameController::render()
     }
 
     // The clouds, where the land is humid enough and not (meaning not established) above 0.01: one in
-    // every 200-block cell of 13 x 13 around the camera that the noise allows.
+    // every 200-block cell of 13 x 13 around the camera that the noise allows. Beyond 100% render
+    // distance the clouds' fog reaches further than that square, so it grows until a cloud enters and
+    // leaves it only where the fog hides it completely: 1.5 times the loaded radius plus the largest
+    // cloud's half diagonal, and one cell for the camera's and the clouds' places within their cells.
     plasma::Vector<4, float> darkness = 0.5f * (skyColor0 + skyColor1);
     darkness[3] = daylight;
     m_shader->applyCloud();
@@ -761,8 +765,12 @@ void GameController::render()
         0.01f > m_world.blendedFirelands((int)m_player->m_entityData.position[0],
                                          (int)m_player->m_entityData.position[1])) {
         const plasma::Vector<3, Fixed> &camera = m_cameraPosition;
-        for (int i = -6; i <= 6; i++) {
-            for (int j = -6; j <= 6; j++) {
+        float cloudHalfDiagonal = 0.5f * 9.0f * std::sqrt((float)(cloud->sizeX() * cloud->sizeX() + cloud->sizeY() * cloud->sizeY()));
+        int cloudCells = 6;
+        if (m_options.renderDistance > 100)
+            cloudCells = std::max(6, (int)std::ceil((m_loadedMeshRadius * 1.5f + cloudHalfDiagonal) / 200.0f) + 1);
+        for (int i = -cloudCells; i <= cloudCells; i++) {
+            for (int j = -cloudCells; j <= cloudCells; j++) {
                 int cellX = (int)camera[0] / 200 + i;
                 int cellY = (int)camera[1] / 200 + j;
                 float chance = (noise((double)cellX, (double)cellY) + 1.0f) * 0.5f;
