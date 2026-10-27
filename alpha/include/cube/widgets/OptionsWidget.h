@@ -35,6 +35,7 @@ public:
     void CreatureDistanceDecrease();
     void CreatureDistanceIncrease();
     void FastCreatureUpdatesToggle();
+    void FastTerrainLoadingToggle();
     void ResolutionDecrease();
     void ResolutionIncrease();
     void SoundVolumeDecrease();
@@ -73,6 +74,8 @@ public:
     plasma::Node *m_nextCreatureDistance;
     plasma::Node *m_previousFastCreatureUpdates;
     plasma::Node *m_nextFastCreatureUpdates;
+    plasma::Node *m_previousFastTerrainLoading;
+    plasma::Node *m_nextFastTerrainLoading;
     plasma::Node *m_previousMinTimeStep;
     plasma::Node *m_nextMinTimeStep;
     plasma::Node *m_previousLanguage;

@@ -220,6 +220,16 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextFastCreatureUpdates->setDisplay(rightButton->m_display->clone());
     m_nextFastCreatureUpdates->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
                                              &OptionsWidget::FastCreatureUpdatesToggle, true);
+    m_previousFastTerrainLoading = leftButton->instance(node);
+    m_previousFastTerrainLoading->setTransformation(leftButton->m_transformation->clone());
+    m_previousFastTerrainLoading->setDisplay(leftButton->m_display->clone());
+    m_previousFastTerrainLoading->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                                 &OptionsWidget::FastTerrainLoadingToggle, true);
+    m_nextFastTerrainLoading = rightButton->instance(node);
+    m_nextFastTerrainLoading->setTransformation(rightButton->m_transformation->clone());
+    m_nextFastTerrainLoading->setDisplay(rightButton->m_display->clone());
+    m_nextFastTerrainLoading->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                             &OptionsWidget::FastTerrainLoadingToggle, true);
     m_applyButton = actionButtonTemplate->clone(node);
     m_okButton = actionButtonTemplate->clone(node);
     m_cancelButton = actionButtonTemplate->clone(node);
@@ -580,6 +590,28 @@ void OptionsWidget::draw()
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
     text.str(L"");
+    text << (m_options.fastTerrainLoading ? "Yes" : "No");
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Terrain Loading", 0.0f, 0.0f, 15.0f, 477.0f, 12.0f, 3.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Terrain Loading", 0.0f, 0.0f, 15.0f, 477.0f, 12.0f, 0.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 477.0f, 12.0f, 3.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 477.0f, 12.0f, 0.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    text.str(L"");
     m_previousFullscreen->display()->setFillColor(m_previousFullscreen->widget()->isPointerOver()
                                                       ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                       : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
@@ -668,6 +700,12 @@ void OptionsWidget::draw()
                                      ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                      : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
     m_nextFastCreatureUpdates->display()->setFillColor(m_nextFastCreatureUpdates->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_previousFastTerrainLoading->display()->setFillColor(m_previousFastTerrainLoading->widget()->isPointerOver()
+                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_nextFastTerrainLoading->display()->setFillColor(m_nextFastTerrainLoading->widget()->isPointerOver()
                                      ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                      : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
 }
@@ -775,6 +813,11 @@ void OptionsWidget::CreatureDistanceIncrease()
     m_options.creatureDistance += DetailDistanceStep;
     if (m_options.creatureDistance > MaximumCreatureDistance)
         m_options.creatureDistance = MaximumCreatureDistance;
+}
+
+void OptionsWidget::FastTerrainLoadingToggle()
+{
+    m_options.fastTerrainLoading = !m_options.fastTerrainLoading;
 }
 
 void OptionsWidget::FastCreatureUpdatesToggle()
@@ -895,6 +938,10 @@ void OptionsWidget::resized()
     m_previousFastCreatureUpdates->m_widget->moveTo(240.0f, 432.0f, true);
     button = m_nextFastCreatureUpdates->m_widget;
     button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 432.0f, true);
+
+    m_previousFastTerrainLoading->m_widget->moveTo(240.0f, 462.0f, true);
+    button = m_nextFastTerrainLoading->m_widget;
+    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 462.0f, true);
 
     button = m_applyButton->m_widget;
     button->moveTo(20.0f, getViewHeight() - button->getViewHeight() - 20.0f, true);

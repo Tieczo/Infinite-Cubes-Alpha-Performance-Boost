@@ -285,6 +285,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
       m_mapZoom(1.0f),
       m_targetMapZoom(1.0f),
       m_loadedMeshRadius(0),
+      m_chunkThreadWaiting(false),
       m_cloudFrame(0),
       m_cloudSeed(-1),
       m_screenShake(0),
@@ -1460,9 +1461,17 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                         }
                     }
                     if (nearestDistance >= 0) {
+                        DWORD start = timeGetTime();
                         m_world.enterZones();
                         m_worldMap.loadZone(nearest[0], nearest[1]);
                         m_world.leaveZones();
+                        // Fast Terrain Loading: a tile holds the zones for up to about 150 ms, and the chunk
+                        // thread hardly got them in between, so the landscape loaded at a crawl while the map
+                        // was built. A waiting chunk thread now gets three times as long (at most a second).
+                        if (m_options.fastTerrainLoading && m_chunkThreadWaiting) {
+                            DWORD held = timeGetTime() - start;
+                            Sleep(held * 3 < 1000 ? held * 3 : 1000);
+                        }
                     }
                 }
             }
@@ -1850,7 +1859,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
         m_optionsPanel = m_blackWidget->instance(m_gameScreen);
         m_optionsPanel->setTransformation(m_optionsPanel->transformation()->clone());
         m_optionsPanel->setDisplay(m_optionsPanel->display()->clone());
-        m_optionsPanel->widget()->resizeTo(450.0f, 560.0f, true); // 440 before the rows Show FPS to Fast Creature Updates
+        m_optionsPanel->widget()->resizeTo(450.0f, 590.0f, true); // 440 before the rows Show FPS to Fast Terrain Loading
         m_optionsPanel->setVisible(false);
         plasma::Node *optionsNode = engine->createNode(0, 0, 0, 0);
         m_optionsWidget =
@@ -9761,7 +9770,9 @@ void GameController::updateChunk(int x, int y)
 
     int x0 = x * BlocksPerChunk;
     int y0 = y * BlocksPerChunk;
+    m_chunkThreadWaiting = true;
     m_world.enterZones();
+    m_chunkThreadWaiting = false;
     // A chunk at a zone's border relights 16 columns around it, a chunk that needs a remesh 4.
     if (chunk->needsRemesh || x0 % BlocksPerZone == 0 || y0 % BlocksPerZone == 0 ||
         x0 % BlocksPerZone == BlocksPerZone - BlocksPerChunk || y0 % BlocksPerZone == BlocksPerZone - BlocksPerChunk) {

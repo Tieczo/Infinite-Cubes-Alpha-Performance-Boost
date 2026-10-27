@@ -27,5 +27,6 @@ struct Options {
     int plantDistance;
     int creatureDistance; // at most MaximumCreatureDistance
     int fastCreatureUpdates; // World::m_fastCreatureUpdates (not in the original)
+    int fastTerrainLoading;  // the map thread lets a waiting chunk thread go first (not in the original)
 };
 }

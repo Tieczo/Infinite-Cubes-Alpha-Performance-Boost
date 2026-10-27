@@ -2,6 +2,7 @@
 #pragma once
 #include "cube/ParticleIds.h"
 #include <windows.h>
+#include <atomic>
 #include <list>
 #include <map>
 #include <string>
@@ -413,6 +414,7 @@ public:
     float m_actualCameraDistance; // camera distance after terrain collision (update); zero puts the camera at its focus
     float m_viewRadius;           // half the 100% view square in blocks (ChunkGridSide * 16)
     float m_loadedMeshRadius;     // Smoothed loaded-mesh radius minus 22.4 blocks; fog adds that distance back.
+    std::atomic<bool> m_chunkThreadWaiting; // the chunk thread waits for the world's zones (updateChunk)
     // The clouds' grid cells (render), by cell: whether the cell has a cloud, where and how large. Each
     // cell is worked out again every CloudRefreshFrames frames, in turn, as the world's records load;
     // cleared for another world, and cells far from the camera are dropped.
