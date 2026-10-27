@@ -17,5 +17,6 @@ struct Options {
     int invertY;
     int language;
     int minTimeStep;
+    int showFPS; // the frame rate after time, temperature and humidity (not in the original)
 };
 }

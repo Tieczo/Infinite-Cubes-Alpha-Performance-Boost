@@ -1826,7 +1826,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
         m_optionsPanel = m_blackWidget->instance(m_gameScreen);
         m_optionsPanel->setTransformation(m_optionsPanel->transformation()->clone());
         m_optionsPanel->setDisplay(m_optionsPanel->display()->clone());
-        m_optionsPanel->widget()->resizeTo(450.0f, 440.0f, true);
+        m_optionsPanel->widget()->resizeTo(450.0f, 470.0f, true); // 440 before the Show FPS row
         m_optionsPanel->setVisible(false);
         plasma::Node *optionsNode = engine->createNode(0, 0, 0, 0);
         m_optionsWidget =
@@ -7941,6 +7941,17 @@ void GameController::update(int milliseconds)
                                       -60.0f);
         text << L"TIME " << m_world.getTime() / 3600000 << L":" << std::setfill(L'0') << std::setw(2)
              << m_world.getTime() / 60000 % 60 << L"  TEMP " << temperature << L" \u00b0C  HUM " << humidity << L"%";
+        // The frames per second, averaged over half a second (the Show FPS option).
+        static int s_frames, s_frameTime, s_fps;
+        s_frames++;
+        s_frameTime += milliseconds;
+        if (s_frameTime >= 500) {
+            s_fps = s_frames * 1000 / s_frameTime;
+            s_frames = 0;
+            s_frameTime = 0;
+        }
+        if (m_options.showFPS)
+            text << L"  FPS " << s_fps;
         m_landscapeNode->findNode(L"star1")->setVisible(false);
         m_landscapeNode->findNode(L"star2")->setVisible(false);
         m_landscapeNode->findNode(L"star3")->setVisible(false);

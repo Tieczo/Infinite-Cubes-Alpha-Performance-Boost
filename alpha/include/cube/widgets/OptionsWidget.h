@@ -29,6 +29,7 @@ public:
     void MusicVolumeIncrease();
     void RenderDistanceDecrease();
     void RenderDistanceIncrease();
+    void ShowFPSToggle();
     void ResolutionDecrease();
     void ResolutionIncrease();
     void SoundVolumeDecrease();
@@ -59,6 +60,8 @@ public:
     plasma::Node *m_nextCameraSmoothness;
     plasma::Node *m_previousInvertY;
     plasma::Node *m_nextInvertY;
+    plasma::Node *m_previousShowFPS;
+    plasma::Node *m_nextShowFPS;
     plasma::Node *m_previousMinTimeStep;
     plasma::Node *m_nextMinTimeStep;
     plasma::Node *m_previousLanguage;

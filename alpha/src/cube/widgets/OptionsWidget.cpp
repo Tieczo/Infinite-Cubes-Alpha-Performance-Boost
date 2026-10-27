@@ -171,6 +171,16 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextLanguage->setDisplay(rightButton->m_display->clone());
     m_nextLanguage->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
                                   &OptionsWidget::LanguageIncrease, true);
+    m_previousShowFPS = leftButton->instance(node);
+    m_previousShowFPS->setTransformation(leftButton->m_transformation->clone());
+    m_previousShowFPS->setDisplay(leftButton->m_display->clone());
+    m_previousShowFPS->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                     &OptionsWidget::ShowFPSToggle, true);
+    m_nextShowFPS = rightButton->instance(node);
+    m_nextShowFPS->setTransformation(rightButton->m_transformation->clone());
+    m_nextShowFPS->setDisplay(rightButton->m_display->clone());
+    m_nextShowFPS->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                 &OptionsWidget::ShowFPSToggle, true);
     m_applyButton = actionButtonTemplate->clone(node);
     m_okButton = actionButtonTemplate->clone(node);
     m_cancelButton = actionButtonTemplate->clone(node);
@@ -443,6 +453,28 @@ void OptionsWidget::draw()
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
     text.str(L"");
+    text << (m_options.showFPS ? "Yes" : "No");
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Show FPS", 0.0f, 0.0f, 15.0f, 357.0f, 12.0f, 3.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Show FPS", 0.0f, 0.0f, 15.0f, 357.0f, 12.0f, 0.0f,
+                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 357.0f, 12.0f, 3.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    m_engine->getFontEngine()->renderText(
+        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 357.0f, 12.0f, 0.0f,
+        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
+        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
+    text.str(L"");
     m_previousFullscreen->display()->setFillColor(m_previousFullscreen->widget()->isPointerOver()
                                                       ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                       : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
@@ -509,6 +541,12 @@ void OptionsWidget::draw()
     m_nextLanguage->display()->setFillColor(m_nextLanguage->widget()->isPointerOver()
                                                 ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                 : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_previousShowFPS->display()->setFillColor(m_previousShowFPS->widget()->isPointerOver()
+                                                   ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                                   : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    m_nextShowFPS->display()->setFillColor(m_nextShowFPS->widget()->isPointerOver()
+                                               ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                               : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
 }
 
 void OptionsWidget::AntiAliasingDecrease()
@@ -586,6 +624,11 @@ void OptionsWidget::FullscreenIncrease()
 void OptionsWidget::InvertYToggle()
 {
     m_options.invertY = !m_options.invertY;
+}
+
+void OptionsWidget::ShowFPSToggle()
+{
+    m_options.showFPS = !m_options.showFPS;
 }
 
 void OptionsWidget::LanguageDecrease()
@@ -680,6 +723,10 @@ void OptionsWidget::resized()
     m_previousLanguage->m_widget->moveTo(240.0f, 312.0f, true);
     button = m_nextLanguage->m_widget;
     button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 312.0f, true);
+
+    m_previousShowFPS->m_widget->moveTo(240.0f, 342.0f, true);
+    button = m_nextShowFPS->m_widget;
+    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 342.0f, true);
 
     button = m_applyButton->m_widget;
     button->moveTo(20.0f, getViewHeight() - button->getViewHeight() - 20.0f, true);

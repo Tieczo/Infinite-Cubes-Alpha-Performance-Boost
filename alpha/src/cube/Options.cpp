@@ -35,7 +35,8 @@ Options::Options()
       cameraSmoothness(DefaultCameraSmoothness),
       invertY(0),
       language(0),
-      minTimeStep(DefaultMinTimeStep)
+      minTimeStep(DefaultMinTimeStep),
+      showFPS(0)
 {}
 
 void Options::load()
@@ -70,6 +71,8 @@ void Options::load()
             file >> invertY;
         if (key == "minTimeStep")
             file >> minTimeStep;
+        if (key == "showFPS")
+            file >> showFPS;
     }
 }
 
@@ -88,6 +91,7 @@ void Options::save()
     file << "language " << language << std::endl;
     file << "invertY " << invertY << std::endl;
     file << "minTimeStep " << minTimeStep << std::endl;
+    file << "showFPS " << showFPS << std::endl;
 }
 
 }
