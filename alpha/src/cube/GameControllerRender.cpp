@@ -2005,13 +2005,13 @@ void GameController::render()
     if (m_showPathSearch) {
         for (std::vector<CreatureDistance>::iterator it = creatures.begin(); it != creatures.end(); it++) {
             Creature *creature = it->creature;
-            for (std::map<std::vector<int>, Creature::PathNode>::iterator node = creature->m_pathNodes.begin();
+            for (std::map<Creature::PathKey, Creature::PathNode>::iterator node = creature->m_pathNodes.begin();
                  node != creature->m_pathNodes.end(); ++node) {
                 Sprite *cube = m_cubeSprite;
                 m_shader->setMaterialColor(plasma::Vector<4, float>(0.2f, 0.7f, 1.0f, 1.0f));
                 plasma::Matrix<float> nodeModel;
                 nodeModel.identity();
-                const std::vector<int> &block = node->first;
+                const Creature::PathKey &block = node->first;
                 nodeModel.translate((float)(Fixed(block[0]) + 0.5f + m_drawOriginX),
                                     (float)(Fixed(block[1]) + 0.5f + m_drawOriginY), (float)block[2]);
                 nodeModel.scale(0.2f, 0.2f, 0.2f);

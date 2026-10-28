@@ -3,6 +3,7 @@
 #pragma once
 #include <winsock2.h>
 #include "cube/SkillIds.h"
+#include <array>
 #include <list>
 #include <map>
 #include <set>
@@ -580,10 +581,12 @@ public:
     std::vector<int> m_summonRaces;   // race ids
     unsigned int unused1404;          // Zeroed by construction, reset and stopActions; unread.
     // Path search traverses blocks between m_pathStart and m_pathGoal, keyed by three integer block
-    // coordinates.
-    std::map<std::vector<int>, PathNode>::iterator m_nearestPathNode; // the discovered block with the lowest heuristic
-    std::map<std::vector<int>, PathNode> m_pathNodes;                 // all discovered blocks
-    std::set<std::vector<int>> m_pendingPathNodes;                    // pending blocks, expanded by lowest totalCost
+    // coordinates. The key is a fixed array (a vector of three in the original): the same order (both compare
+    // lexicographically), without a heap allocation for every lookup.
+    typedef std::array<int, 3> PathKey;
+    std::map<PathKey, PathNode>::iterator m_nearestPathNode; // the discovered block with the lowest heuristic
+    std::map<PathKey, PathNode> m_pathNodes;                 // all discovered blocks
+    std::set<PathKey> m_pendingPathNodes;                    // pending blocks, expanded by lowest totalCost
     plasma::Vector<3, int> m_pathStartBlock;
     plasma::Vector<3, Fixed> m_pathStart;
     plasma::Vector<3, Fixed> m_pathGoal;

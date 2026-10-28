@@ -56,7 +56,7 @@ void World::finishPathSearch(Creature *creature)
     creature->m_path.clear();
     plasma::Vector<3, int> block = next;
     if (creature->m_nearestPathNode != creature->m_pathNodes.end()) {
-        const std::vector<int> &key = creature->m_nearestPathNode->first;
+        const Creature::PathKey &key = creature->m_nearestPathNode->first;
         block = plasma::Vector<3, int>(key[0], key[1], key[2]);
     }
     creature->m_path.push_front(block);
@@ -123,14 +123,14 @@ bool World::followPath(Creature *creature, int elapsed)
     } else if (nearestDistance == 0 && *closest != creature->m_pathStartBlock) {
         creature->m_pathStartBlock = *closest;
         creature->m_pathStart = *closest;
-        std::set<std::vector<int>> retained;
+        std::set<Creature::PathKey> retained;
         int count = RetainedPendingNodes;
         if ((int)creature->m_pendingPathNodes.size() < count)
             count = (int)creature->m_pendingPathNodes.size();
         for (int i = 0; i < count; i++) {
-            std::set<std::vector<int>>::iterator best = creature->m_pendingPathNodes.end();
+            std::set<Creature::PathKey>::iterator best = creature->m_pendingPathNodes.end();
             int heuristic = -1;
-            for (std::set<std::vector<int>>::iterator it = creature->m_pendingPathNodes.begin();
+            for (std::set<Creature::PathKey>::iterator it = creature->m_pendingPathNodes.begin();
                  it != creature->m_pendingPathNodes.end(); ++it) {
                 Creature::PathNode *node = creature->findPathNode((*it)[0], (*it)[1], (*it)[2]);
                 if (node && (heuristic < 0 || node->heuristic < heuristic)) {
@@ -144,14 +144,14 @@ bool World::followPath(Creature *creature, int elapsed)
             }
         }
         creature->m_pendingPathNodes = retained;
-        std::list<std::set<std::vector<int>>::iterator> disconnected;
-        std::map<std::vector<int>, Creature::PathNode> nodes;
+        std::list<std::set<Creature::PathKey>::iterator> disconnected;
+        std::map<Creature::PathKey, Creature::PathNode> nodes;
         Creature::PathNode *root = creature->findPathNode((*closest)[0], (*closest)[1], (*closest)[2]);
-        for (std::set<std::vector<int>>::iterator it = creature->m_pendingPathNodes.begin();
+        for (std::set<Creature::PathKey>::iterator it = creature->m_pendingPathNodes.begin();
              it != creature->m_pendingPathNodes.end(); ++it) {
             Creature::PathNode *node = creature->findPathNode((*it)[0], (*it)[1], (*it)[2]);
-            std::map<std::vector<int>, Creature::PathNode> chain;
-            std::vector<int> key(3);
+            std::map<Creature::PathKey, Creature::PathNode> chain;
+            Creature::PathKey key = {};
             key = *it;
             while (node && node != root) {
                 Creature::PathNode *parent = creature->findPathNode(node->parent[0], node->parent[1], node->parent[2]);
@@ -168,18 +168,18 @@ bool World::followPath(Creature *creature, int elapsed)
             else
                 nodes.insert(chain.begin(), chain.end());
         }
-        std::vector<int> key(3);
+        Creature::PathKey key = {};
         key[0] = (*closest)[0];
         key[1] = (*closest)[1];
         key[2] = (*closest)[2];
         nodes[key] = *root;
         nodes[key].parent = *closest;
-        for (std::list<std::set<std::vector<int>>::iterator>::iterator it = disconnected.begin();
+        for (std::list<std::set<Creature::PathKey>::iterator>::iterator it = disconnected.begin();
              it != disconnected.end(); ++it)
             creature->m_pendingPathNodes.erase(*it);
         creature->m_pathNodes = nodes;
         creature->m_nearestPathNode = creature->m_pathNodes.end();
-        for (std::map<std::vector<int>, Creature::PathNode>::iterator it = creature->m_pathNodes.begin();
+        for (std::map<Creature::PathKey, Creature::PathNode>::iterator it = creature->m_pathNodes.begin();
              it != creature->m_pathNodes.end(); ++it) {
             if (creature->m_nearestPathNode == creature->m_pathNodes.end() ||
                 it->second.heuristic < creature->m_nearestPathNode->second.heuristic)
@@ -313,7 +313,7 @@ bool World::followPath(Creature *creature, int elapsed)
 
 bool Creature::isPathNodePending(int x, int y, int z)
 {
-    std::vector<int> key(3);
+    Creature::PathKey key = {};
     key[0] = x;
     key[1] = y;
     key[2] = z;
@@ -336,11 +336,11 @@ int pathDistance(const plasma::Vector<3, int> &offset)
 
 Creature::PathNode *Creature::findPathNode(int x, int y, int z)
 {
-    std::vector<int> key(3);
+    Creature::PathKey key = {};
     key[0] = x;
     key[1] = y;
     key[2] = z;
-    std::map<std::vector<int>, PathNode>::iterator it = m_pathNodes.find(key);
+    std::map<PathKey, PathNode>::iterator it = m_pathNodes.find(key);
     if (it == m_pathNodes.end())
         return 0;
     return &it->second;
@@ -348,7 +348,7 @@ Creature::PathNode *Creature::findPathNode(int x, int y, int z)
 
 void Creature::setPathNode(int x, int y, int z, const PathNode &node)
 {
-    std::vector<int> key(3);
+    Creature::PathKey key = {};
     key[0] = x;
     key[1] = y;
     key[2] = z;
@@ -475,10 +475,10 @@ bool World::continuePathSearch(Creature *creature)
     if (creature->m_pendingPathNodes.empty())
         return false;
 
-    std::set<std::vector<int>>::iterator best = creature->m_pendingPathNodes.begin();
+    std::set<Creature::PathKey>::iterator best = creature->m_pendingPathNodes.begin();
     Creature::PathNode *bestNode = 0;
     int lowestCost = -1;
-    for (std::set<std::vector<int>>::iterator it = creature->m_pendingPathNodes.begin();
+    for (std::set<Creature::PathKey>::iterator it = creature->m_pendingPathNodes.begin();
          it != creature->m_pendingPathNodes.end(); ++it) {
         Creature::PathNode *node = creature->findPathNode((*it)[0], (*it)[1], (*it)[2]);
         if (node && (!bestNode || node->totalCost < lowestCost)) {
