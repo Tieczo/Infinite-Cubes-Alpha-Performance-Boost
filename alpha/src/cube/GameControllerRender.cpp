@@ -2239,6 +2239,9 @@ void GameController::render()
             turn.rotateZ(creature->m_entityData.rotation[2]);
             plasma::Vector<3, float> offset = turn.transformDirection(creature->m_animationState.m_creatureOffset);
             plasma::Vector<3, int> center(creature->m_drawnPosition + plasma::Vector<3, Fixed>(offset));
+            // The 25 squares share one transform: gathered as a triangle list and drawn at once.
+            SunVertex squares[25 * 6];
+            int vertexCount = 0;
             for (int x = -2; x <= 2; x++) {
                 for (int y = -2; y <= 2; y++) {
                     int z = center[2];
@@ -2269,13 +2272,22 @@ void GameController::render()
                         {plasma::Vector<3, float>((float)x, (float)(y + 1), (float)z), 0xff000000,
                          plasma::Vector<2, float>(u, v + 1.0f / 3.0f)},
                     };
-                    plasma::Matrix<float> shadowModel;
-                    shadowModel.identity();
-                    shadowModel.translate((float)(Fixed(center[0]) + m_drawOriginX),
-                                          (float)(Fixed(center[1]) + m_drawOriginY), 0.02f);
-                    m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&shadowModel);
-                    m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(SunVertex));
+                    // The fan's two triangles, their corners in the order a fan is drawn in.
+                    squares[vertexCount++] = quad[1];
+                    squares[vertexCount++] = quad[2];
+                    squares[vertexCount++] = quad[0];
+                    squares[vertexCount++] = quad[2];
+                    squares[vertexCount++] = quad[3];
+                    squares[vertexCount++] = quad[0];
                 }
+            }
+            if (vertexCount > 0) {
+                plasma::Matrix<float> shadowModel;
+                shadowModel.identity();
+                shadowModel.translate((float)(Fixed(center[0]) + m_drawOriginX),
+                                      (float)(Fixed(center[1]) + m_drawOriginY), 0.02f);
+                m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&shadowModel);
+                m_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, squares, sizeof(SunVertex));
             }
         }
     }
