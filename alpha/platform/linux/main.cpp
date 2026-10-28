@@ -8,6 +8,7 @@
 #include <winsock2.h>
 #include <d3d9.h>
 #include <direct.h>
+#include <malloc.h>
 #include <unistd.h>
 #include <cmath>
 #include <cstdlib>
@@ -369,6 +370,15 @@ void resetDevice(bool unused)
 // Command line: "server" hosts, any other first argument is a server address to join.
 int main(int argc, char **argv)
 {
+    // glibc hands the top of the heap back to the system after every free of more than 128 KiB and fetches it
+    // again at once; the path search and DXVK allocate and free many blocks every frame. Up to 256 MiB stay
+    // with the game and the heap grows by 64 MiB at a time. GLIBC_TUNABLES, when set (even empty), decides
+    // instead.
+    if (!getenv("GLIBC_TUNABLES")) {
+        mallopt(M_TRIM_THRESHOLD, 256 << 20);
+        mallopt(M_TOP_PAD, 64 << 20);
+    }
+
     // The game's files (data*.db, *.plx, Save/) are next to the executable.
     const char *base = SDL_GetBasePath();
     if (base && chdir(base) != 0)
