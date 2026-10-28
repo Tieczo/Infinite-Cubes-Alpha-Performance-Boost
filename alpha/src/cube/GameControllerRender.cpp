@@ -1,3 +1,4 @@
+#include <cstring>
 #include <windows.h>
 #include <mmsystem.h>
 #include "cube/WorldDimensions.h"
@@ -98,6 +99,14 @@ namespace {
 enum {
     CloudRefreshFrames = 8
 };
+}
+
+// Whether two chunks give the shader the same point lights: the ten uploaded positions and colours, bit for
+// bit (CubeShader::setPointLights uploads the first ten).
+static bool sameUploadedLights(const Chunk &a, const Chunk &b)
+{
+    return memcmp(a.lightPositions, b.lightPositions, 10 * sizeof(a.lightPositions[0])) == 0 &&
+           memcmp(a.lightColors, b.lightColors, 10 * sizeof(a.lightColors[0])) == 0;
 }
 
 // Renders one frame after update: swaps in completed chunk meshes, gathers visible chunks and lights, draws the sky or map or waiting screen, then clouds, chunks, creatures, objects, effects, water and interface. Light radii are in blocks; colors are RGB or RGBA in the range zero to one. Model turning rates use degrees per millisecond, and interface positions use pixels. The normal sky clear color is opaque blue; player-only screenshots use white.
@@ -909,13 +918,24 @@ void GameController::render()
     // The plants and objects beyond their fade distance, drawn translucent after everything else,
     // farthest first.
     std::vector<DeferredSprite> deferred;
+    // In this loop only the chunks and their plants set the shader's registers. A chunk's point lights equal to
+    // the ones uploaded last, and the material colour and alpha while no plant was drawn since, are not uploaded
+    // again (not in the original; the registers hold the same values either way).
+    Chunk *lightsUploaded = 0;
+    bool materialUploaded = false;
     for (std::vector<Chunk *>::iterator it = visibleChunks.begin(); it != visibleChunks.end(); it++) {
         Chunk *chunk = *it;
         EnterCriticalSection(&chunk->lock);
         if (!chunk->chunkBuffers.empty()) {
-            m_shader->setMaterialColor(tint);
-            m_shader->setPointLights(chunk->lightPositions, chunk->lightColors);
-            m_shader->setAlpha(1.0f);
+            if (!materialUploaded) {
+                m_shader->setMaterialColor(tint);
+                m_shader->setAlpha(1.0f);
+                materialUploaded = true;
+            }
+            if (!lightsUploaded || !sameUploadedLights(*lightsUploaded, *chunk)) {
+                m_shader->setPointLights(chunk->lightPositions, chunk->lightColors);
+                lightsUploaded = chunk;
+            }
             for (std::list<ChunkBuffer *>::iterator buffer = chunk->chunkBuffers.begin();
                  buffer != chunk->chunkBuffers.end(); buffer++) {
                 if (!(*buffer)->indexBuffer)
@@ -990,6 +1010,7 @@ void GameController::render()
                     }
                     renderPlant(*plant, distanceSquared, plantFadeEnd, plantFadeStart, index, view, m_projectionMatrix,
                                 tint);
+                    materialUploaded = false; // the plant set its own colour and alpha
                 }
             }
         }
@@ -2381,6 +2402,8 @@ void GameController::render()
     m_device->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
     m_device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
     m_shader->setMaterialColor(tint);
+    // As for the land: point lights equal to the ones uploaded last are not uploaded again (not in the original).
+    Chunk *waterLightsUploaded = 0;
     for (std::vector<Chunk *>::reverse_iterator it = visibleChunks.rbegin(); it != visibleChunks.rend(); it++) {
         Chunk *chunk = *it;
         EnterCriticalSection(&chunk->lock);
@@ -2392,7 +2415,10 @@ void GameController::render()
             waterModel.identity();
             waterModel.translate((float)(Fixed(chunk->position[0] << 5) + m_drawOriginX),
                                  (float)(Fixed(chunk->position[1] << 5) + m_drawOriginY), (float)(*buffer)->baseZ);
-            m_shader->setPointLights(chunk->lightPositions, chunk->lightColors);
+            if (!waterLightsUploaded || !sameUploadedLights(*waterLightsUploaded, *chunk)) {
+                m_shader->setPointLights(chunk->lightPositions, chunk->lightColors);
+                waterLightsUploaded = chunk;
+            }
             m_shader->setMatrices(waterModel, view, m_projectionMatrix);
             m_device->SetStreamSource(0, (*buffer)->vertexBuffer, 0, sizeof(Vertex));
             m_device->SetIndices((*buffer)->waterIndexBuffer);

@@ -1,4 +1,5 @@
 // CubeShader manages Direct3D 9 shaders and their constants.
+#include <cstring>
 #include "cube/CubeShader.h"
 // Shader headers are generated from the HLSL sources listed in shaders.json.
 #include "cube/shaders/WorldVertexShader.h"
@@ -183,13 +184,23 @@ void CubeShader::setMatrices(const Matrix<float> &world, const Matrix<float> &vi
     for (int column = 0; column < 4; ++column)
         for (int row = 0; row < 3; ++row)
             matrix[column + row * 4] = world[row + column * 4];
+    Matrix<float> worldView = view * world;
+    worldView.transpose();
+    Matrix<float> worldViewProjection = projection * view * world;
+    worldViewProjection.transpose();
+    // The three matrices fill consecutive registers (projected 4, world-view 3, world 3): one upload of the
+    // same values instead of three (not in the original).
+    if (m_worldViewMatrix == m_worldViewProjMatrix + 4 && m_worldMatrix == m_worldViewMatrix + 3) {
+        float values[10 * 4];
+        memcpy(values, &worldViewProjection[0], 16 * sizeof(float));
+        memcpy(values + 16, &worldView[0], 12 * sizeof(float));
+        memcpy(values + 28, &matrix[0], 12 * sizeof(float));
+        m_device->SetVertexShaderConstantF(m_worldViewProjMatrix, values, 10);
+        return;
+    }
     m_device->SetVertexShaderConstantF(m_worldMatrix, &matrix[0], 3);
-    matrix = view * world;
-    matrix.transpose();
-    m_device->SetVertexShaderConstantF(m_worldViewMatrix, &matrix[0], 3);
-    matrix = projection * view * world;
-    matrix.transpose();
-    m_device->SetVertexShaderConstantF(m_worldViewProjMatrix, &matrix[0], 4);
+    m_device->SetVertexShaderConstantF(m_worldViewMatrix, &worldView[0], 3);
+    m_device->SetVertexShaderConstantF(m_worldViewProjMatrix, &worldViewProjection[0], 4);
 }
 
 void CubeShader::setPointLights(const Vector<4, float> *positions, const Vector<3, float> *colors)
@@ -198,10 +209,19 @@ void CubeShader::setPointLights(const Vector<4, float> *positions, const Vector<
         UploadedPointLights = 10
     };
     // Converts all sixteen source colors; the shader receives the first ten.
-    m_device->SetVertexShaderConstantF(m_pointLightPositions, &positions[0][0], UploadedPointLights);
     ShaderColor values[PointLightSourceCount];
     for (int i = 0; i < PointLightSourceCount; ++i)
         values[i] = ShaderColor(colors[i][0], colors[i][1], colors[i][2], 0);
+    // The colors follow the positions in the registers: one upload of the same values instead of two (not in
+    // the original).
+    if (m_pointLightColors == m_pointLightPositions + UploadedPointLights) {
+        float both[2 * UploadedPointLights * 4];
+        memcpy(both, &positions[0][0], UploadedPointLights * 4 * sizeof(float));
+        memcpy(both + UploadedPointLights * 4, values[0], UploadedPointLights * 4 * sizeof(float));
+        m_device->SetVertexShaderConstantF(m_pointLightPositions, both, 2 * UploadedPointLights);
+        return;
+    }
+    m_device->SetVertexShaderConstantF(m_pointLightPositions, &positions[0][0], UploadedPointLights);
     m_device->SetVertexShaderConstantF(m_pointLightColors, values[0], UploadedPointLights);
 }
 
