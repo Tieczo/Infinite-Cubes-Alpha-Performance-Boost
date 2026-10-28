@@ -40,7 +40,8 @@ Options::Options()
       plantDistance(100),
       creatureDistance(100),
       fastCreatureUpdates(1),
-      fastTerrainLoading(1)
+      fastTerrainLoading(1),
+      fastPlantScan(1)
 {}
 
 void Options::load()
@@ -85,6 +86,8 @@ void Options::load()
             file >> fastCreatureUpdates;
         if (key == "fastTerrainLoading")
             file >> fastTerrainLoading;
+        if (key == "fastPlantScan")
+            file >> fastPlantScan;
     }
     if (creatureDistance > MaximumCreatureDistance)
         creatureDistance = MaximumCreatureDistance;
@@ -110,6 +113,7 @@ void Options::save()
     file << "creatureDistance " << creatureDistance << std::endl;
     file << "fastCreatureUpdates " << fastCreatureUpdates << std::endl;
     file << "fastTerrainLoading " << fastTerrainLoading << std::endl;
+    file << "fastPlantScan " << fastPlantScan << std::endl;
 }
 
 }

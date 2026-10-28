@@ -153,6 +153,7 @@ void GameController::render()
                     chunk->chunkBuffers = chunk->newChunkBuffers;
                     chunk->newChunkBuffers.clear();
                     chunk->plants = chunk->newPlants;
+                    chunk->indexPlants();
                 }
                 LeaveCriticalSection(&chunk->lock);
             }
@@ -165,76 +166,94 @@ void GameController::render()
                 chunk->squaredCameraDistance = (float)offset.dot(offset);
             }
             int phase = 0;
-            for (std::list<Plant>::iterator plant = chunk->plants.begin(); plant != chunk->plants.end(); ++plant) {
-                // The lamps light their surroundings, flickering (the radius 15 +- 0.5 blocks, 0.01 radians per
-                // millisecond, each lamp 33 radians on).
-                if ((plant->flags & (1 << PlantFlagEmissive)) &&
-                    isSphereVisible(plant->position, LampVisibilityRadius, range)) {
+            // The lamps light their surroundings, flickering (the radius 15 +- 0.5 blocks, 0.01 radians per
+            // millisecond, each lamp 33 radians on).
+            auto shine = [&](const Plant &plant) {
+                if ((plant.flags & (1 << PlantFlagEmissive)) &&
+                    isSphereVisible(plant.position, LampVisibilityRadius, range)) {
                     phase += 33;
                     FrameLight light;
                     light.position =
-                        plant->position + plasma::Vector<3, Fixed>(plasma::Vector<3, float>(0.0f, 0.0f, 0.0f));
+                        plant.position + plasma::Vector<3, Fixed>(plasma::Vector<3, float>(0.0f, 0.0f, 0.0f));
                     light.radius = cos((float)m_world.m_clock * 0.01f + (float)phase) * 0.5f + 15.0f;
                     plasma::Vector<3, Fixed> offset = m_cameraPosition - light.position;
                     light.distanceSquared = (float)offset.dot(offset);
-                    light.color = plant->color;
+                    light.color = plant.color;
                     // Type 13 dims by day.
-                    if (plant->type == PlantLantern02)
+                    if (plant.type == PlantLantern02)
                         light.color *= 1.0f - daylight * 0.5f;
                     lights.push_back(light);
                 }
-                // The plants within 64 blocks call: birds in types 61..63 by day, owls in type 61 at night,
-                // crickets in types 0..4 from noon to midnight: a bird or owl each second with a chance of one in
-                // ten, at volume 0.1 and pitch 0.9..1.1 (owls 0.5..0.7), a cricket every five seconds with one in
-                // 70, at volume 0.05.
-                if (4096.0f > chunk->squaredCameraDistance) {
-                    int clock = m_world.m_clock;
-                    if (m_world.m_time > 6 * World::MillisecondsPerHour &&
-                        m_world.m_time < 21 * World::MillisecondsPerHour) {
-                        if (plant->type == PlantBirdAndOwlEmitter) {
-                            if (callPeriod(plant->position, clock, 1000) !=
-                                    callPeriod(plant->position, clock + m_frameMilliseconds, 1000) &&
-                                rand() % 10 == 0)
-                                playSound(SoundBird1, plant->position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
-                            continue;
-                        }
-                        if (plant->type == PlantBird2Emitter) {
-                            if (callPeriod(plant->position, clock, 1000) !=
-                                    callPeriod(plant->position, clock + m_frameMilliseconds, 1000) &&
-                                rand() % 10 == 0)
-                                playSound(SoundBird2, plant->position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
-                            continue;
-                        }
-                        if (plant->type == PlantBird3Emitter) {
-                            if (callPeriod(plant->position, clock, 1000) !=
-                                    callPeriod(plant->position, clock + m_frameMilliseconds, 1000) &&
-                                rand() % 10 == 0)
-                                playSound(SoundBird3, plant->position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
-                            continue;
-                        }
-                    } else if (plant->type == PlantBirdAndOwlEmitter) {
-                        if (callPeriod(plant->position, clock, 1000) !=
-                                callPeriod(plant->position, clock + m_frameMilliseconds, 1000) &&
+            };
+            // The plants within 64 blocks call: birds in types 61..63 by day, owls in type 61 at night,
+            // crickets in types 0..4 from noon to midnight: a bird or owl each second with a chance of one in
+            // ten, at volume 0.1 and pitch 0.9..1.1 (owls 0.5..0.7), a cricket every five seconds with one in
+            // 70, at volume 0.05.
+            auto call = [&](const Plant &plant) {
+                int clock = m_world.m_clock;
+                if (m_world.m_time > 6 * World::MillisecondsPerHour &&
+                    m_world.m_time < 21 * World::MillisecondsPerHour) {
+                    if (plant.type == PlantBirdAndOwlEmitter) {
+                        if (callPeriod(plant.position, clock, 1000) !=
+                                callPeriod(plant.position, clock + m_frameMilliseconds, 1000) &&
                             rand() % 10 == 0)
-                            playSound(rand() % 2 + SoundOwl1, plant->position, 0.1f,
-                                      rand() * 0.2f / float(RAND_MAX) + 0.5f);
-                        continue;
+                            playSound(SoundBird1, plant.position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
+                        return;
                     }
-                    if (m_world.m_time > 43200000 && m_world.m_time < 86400000) {
-                        if (plant->type == PlantGrass || plant->type == PlantGrass2 || plant->type == PlantGrass3) {
-                            if (callPeriod(plant->position, clock, 5000) !=
-                                    callPeriod(plant->position, clock + m_frameMilliseconds, 5000) &&
-                                rand() % 70 == 0)
-                                playSound(SoundCricket1, plant->position, 0.05f,
-                                          rand() * 0.2f / float(RAND_MAX) + 0.9f);
-                        } else if (plant->type == PlantFlowers2 || plant->type == PlantFlowers) {
-                            if (callPeriod(plant->position, clock, 5000) !=
-                                    callPeriod(plant->position, clock + m_frameMilliseconds, 5000) &&
-                                rand() % 70 == 0)
-                                playSound(SoundCricket2, plant->position, 0.05f,
-                                          rand() * 0.2f / float(RAND_MAX) + 0.9f);
-                        }
+                    if (plant.type == PlantBird2Emitter) {
+                        if (callPeriod(plant.position, clock, 1000) !=
+                                callPeriod(plant.position, clock + m_frameMilliseconds, 1000) &&
+                            rand() % 10 == 0)
+                            playSound(SoundBird2, plant.position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
+                        return;
                     }
+                    if (plant.type == PlantBird3Emitter) {
+                        if (callPeriod(plant.position, clock, 1000) !=
+                                callPeriod(plant.position, clock + m_frameMilliseconds, 1000) &&
+                            rand() % 10 == 0)
+                            playSound(SoundBird3, plant.position, 0.1f, rand() * 0.2f / float(RAND_MAX) + 0.9f);
+                        return;
+                    }
+                } else if (plant.type == PlantBirdAndOwlEmitter) {
+                    if (callPeriod(plant.position, clock, 1000) !=
+                            callPeriod(plant.position, clock + m_frameMilliseconds, 1000) &&
+                        rand() % 10 == 0)
+                        playSound(rand() % 2 + SoundOwl1, plant.position, 0.1f,
+                                  rand() * 0.2f / float(RAND_MAX) + 0.5f);
+                    return;
+                }
+                if (m_world.m_time > 43200000 && m_world.m_time < 86400000) {
+                    if (plant.type == PlantGrass || plant.type == PlantGrass2 || plant.type == PlantGrass3) {
+                        if (callPeriod(plant.position, clock, 5000) !=
+                                callPeriod(plant.position, clock + m_frameMilliseconds, 5000) &&
+                            rand() % 70 == 0)
+                            playSound(SoundCricket1, plant.position, 0.05f,
+                                      rand() * 0.2f / float(RAND_MAX) + 0.9f);
+                    } else if (plant.type == PlantFlowers2 || plant.type == PlantFlowers) {
+                        if (callPeriod(plant.position, clock, 5000) !=
+                                callPeriod(plant.position, clock + m_frameMilliseconds, 5000) &&
+                            rand() % 70 == 0)
+                            playSound(SoundCricket2, plant.position, 0.05f,
+                                      rand() * 0.2f / float(RAND_MAX) + 0.9f);
+                    }
+                }
+            };
+            // With Fast Plant Scan only the chunk's lamps and calling plants are visited, in the same order; the
+            // lamps no longer interleave with the calls, which touch nothing the lamps use.
+            if (m_options.fastPlantScan) {
+                for (std::vector<Plant *>::iterator plant = chunk->emissivePlants.begin(); plant != chunk->emissivePlants.end();
+                     ++plant)
+                    shine(**plant);
+                if (4096.0f > chunk->squaredCameraDistance) {
+                    for (std::vector<Plant *>::iterator plant = chunk->callingPlants.begin();
+                         plant != chunk->callingPlants.end(); ++plant)
+                        call(**plant);
+                }
+            } else {
+                for (std::list<Plant>::iterator plant = chunk->plants.begin(); plant != chunk->plants.end(); ++plant) {
+                    shine(*plant);
+                    if (4096.0f > chunk->squaredCameraDistance)
+                        call(*plant);
                 }
             }
             LeaveCriticalSection(&chunk->lock);

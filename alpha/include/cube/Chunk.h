@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <d3d9.h>
 #include <list>
+#include <vector>
 #include "plasma/Vector.h"
 #include "cube/Fixed.h"
 #include "cube/Zone.h"
@@ -65,6 +66,12 @@ struct Chunk {
     int lightCount;  // 0 after reset
     int vertexCount; // the vertices of the new meshes (updateChunk); the chunk thread sums it against its budget
     std::list<Plant> plants;
+    // The plants of the list that render looks at for every chunk in every frame, in list order (not in
+    // the original, used with the Fast Plant Scan option): the lamps (PlantFlagEmissive) and the plants
+    // that call (birds, owls and crickets). indexPlants rebuilds them whenever plants changes.
+    std::vector<Plant *> emissivePlants;
+    std::vector<Plant *> callingPlants;
+    void indexPlants();
     // New plants from meshing replace the current list under the lock when buffers are swapped.
     std::list<Plant> newPlants;
     CRITICAL_SECTION lock;

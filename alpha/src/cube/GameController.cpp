@@ -1859,7 +1859,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
         m_optionsPanel = m_blackWidget->instance(m_gameScreen);
         m_optionsPanel->setTransformation(m_optionsPanel->transformation()->clone());
         m_optionsPanel->setDisplay(m_optionsPanel->display()->clone());
-        m_optionsPanel->widget()->resizeTo(450.0f, 590.0f, true); // 440 before the rows Show FPS to Fast Terrain Loading
+        m_optionsPanel->widget()->resizeTo(450.0f, 620.0f, true); // 440 before the rows Show FPS to Fast Plant Scan
         m_optionsPanel->setVisible(false);
         plasma::Node *optionsNode = engine->createNode(0, 0, 0, 0);
         m_optionsWidget =
@@ -5671,10 +5671,35 @@ void Chunk::reset()
         delete *it;
     newChunkBuffers.clear();
     plants.clear();
+    indexPlants();
     newPlants.clear();
     vertexCount = 0;
     lightCount = 0;
     LeaveCriticalSection(&lock);
+}
+
+// Collects the lamps and the calling plants (render's chunk pass: the flowers and grasses for the
+// crickets, the bird and owl emitters) of plants, in list order. Called under the lock.
+void Chunk::indexPlants()
+{
+    emissivePlants.clear();
+    callingPlants.clear();
+    for (std::list<Plant>::iterator plant = plants.begin(); plant != plants.end(); ++plant) {
+        if (plant->flags & (1 << PlantFlagEmissive))
+            emissivePlants.push_back(&*plant);
+        switch (plant->type) {
+        case PlantFlowers2:
+        case PlantFlowers:
+        case PlantGrass:
+        case PlantGrass2:
+        case PlantGrass3:
+        case PlantBirdAndOwlEmitter:
+        case PlantBird2Emitter:
+        case PlantBird3Emitter:
+            callingPlants.push_back(&*plant);
+            break;
+        }
+    }
 }
 
 float roundHundredth(float value)
