@@ -773,10 +773,11 @@ void GameController::render()
                 continue;
             Chunk &chunk = m_chunks[(y % m_viewDistance) * m_viewDistance + x % m_viewDistance];
             chunk.lightCount = 0;
-            for (int j = 0; j < 16; j++) {
+            for (int j = 0; j < chunk.lightsWritten; j++) {
                 chunk.lightPositions[j] = plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f);
                 chunk.lightColors[j] = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
             }
+            chunk.lightsWritten = 0;
         }
     }
     for (std::vector<FrameLight>::iterator light = lights.begin(); light != lights.end(); light++) {
@@ -799,6 +800,8 @@ void GameController::render()
                     plasma::Vector<4, float>(position[0], position[1], position[2], light->radius);
                 chunk->lightColors[chunk->lightCount] = light->color;
                 chunk->lightCount++;
+                if (chunk->lightCount > chunk->lightsWritten)
+                    chunk->lightsWritten = chunk->lightCount;
             }
         }
     }

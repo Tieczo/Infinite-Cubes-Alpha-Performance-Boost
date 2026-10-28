@@ -262,6 +262,7 @@ Chunk::Chunk()
     : position(-1, -1),
       remeshTime(0),
       needsRemesh(false),
+      lightsWritten(16),
       vertexCount(0)
 {
     InitializeCriticalSectionAndSpinCount(&lock, 0x80000400);

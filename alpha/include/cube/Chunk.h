@@ -64,6 +64,8 @@ struct Chunk {
     plasma::Vector<4, float> lightPositions[16];
     plasma::Vector<3, float> lightColors[16];
     int lightCount;  // 0 after reset
+    // The entries of the two arrays that may not be zero (render clears only those); all sixteen at first.
+    int lightsWritten;
     int vertexCount; // the vertices of the new meshes (updateChunk); the chunk thread sums it against its budget
     std::list<Plant> plants;
     // The plants of the list that render looks at for every chunk in every frame, in list order (not in
