@@ -413,12 +413,16 @@ void GameController::render()
     m_device->SetTransform(D3DTS_PROJECTION, (const D3DMATRIX *)&skyProjection);
     // The stars (x, y, z, size each) at night above water: a fan bright in the middle and transparent
     // at the corners.
+    // They are gathered and drawn at once, each fan's triangles indexed in the order a fan is drawn in.
     if (0.5f > daylight && !underwater) {
+        static std::vector<StarVertex> starVertices;
+        static std::vector<unsigned short> starIndices;
+        starVertices.resize(m_stars.size() * 6);
         for (int i = 0; i < (int)m_stars.size(); i++) {
             const plasma::Vector<4, float> &star = m_stars[i];
             plasma::Vector<3, float> center = skyView * plasma::Vector<3, float>(star[0], star[1], star[2]);
             float size = star[3];
-            StarVertex fan[6];
+            StarVertex *fan = &starVertices[i * 6];
             fan[0].position = center;
             fan[0].color = 0xffffffff;
             fan[1].position = center + plasma::Vector<3, float>(-1.0f, -1.0f, 0.0f) * size;
@@ -430,7 +434,24 @@ void GameController::render()
             fan[4].position = center + plasma::Vector<3, float>(-1.0f, 1.0f, 0.0f) * size;
             fan[4].color = 0xffffff;
             fan[5] = fan[1];
-            m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 4, fan, sizeof(StarVertex));
+        }
+        // Up to 10000 stars per draw, so that the 16-bit indices reach every corner.
+        enum {
+            StarsPerDraw = 10000
+        };
+        if (starIndices.empty()) {
+            starIndices.resize(StarsPerDraw * 12);
+            for (int i = 0; i < StarsPerDraw; i++)
+                for (int j = 0; j < 4; j++) {
+                    starIndices[i * 12 + j * 3] = (unsigned short)(i * 6 + j + 1);
+                    starIndices[i * 12 + j * 3 + 1] = (unsigned short)(i * 6 + j + 2);
+                    starIndices[i * 12 + j * 3 + 2] = (unsigned short)(i * 6);
+                }
+        }
+        for (int first = 0; first < (int)m_stars.size(); first += StarsPerDraw) {
+            int count = std::min((int)m_stars.size() - first, (int)StarsPerDraw);
+            m_device->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, count * 6, count * 4, &starIndices[0],
+                                             D3DFMT_INDEX16, &starVertices[first * 6], sizeof(StarVertex));
         }
     }
     // The sun: a textured quad 100 blocks along the light, yellower by day.
