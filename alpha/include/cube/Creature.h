@@ -586,7 +586,11 @@ public:
     typedef std::array<int, 3> PathKey;
     std::map<PathKey, PathNode>::iterator m_nearestPathNode; // the discovered block with the lowest heuristic
     std::map<PathKey, PathNode> m_pathNodes;                 // all discovered blocks
-    std::set<PathKey> m_pendingPathNodes;                    // pending blocks, expanded by lowest totalCost
+    // Pending blocks, expanded by lowest totalCost, in key order (a set of keys in the original), each with
+    // its node in m_pathNodes, or null when the block has none: the search scans them without a lookup.
+    // Kept equal to findPathNode by setPathNode and by refreshPendingPathNodes after m_pathNodes is replaced.
+    std::map<PathKey, PathNode *> m_pendingPathNodes;
+    void refreshPendingPathNodes();
     plasma::Vector<3, int> m_pathStartBlock;
     plasma::Vector<3, Fixed> m_pathStart;
     plasma::Vector<3, Fixed> m_pathGoal;
