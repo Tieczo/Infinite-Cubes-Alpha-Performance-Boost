@@ -15,6 +15,7 @@
 #include "plasma/FontEngine.h"
 #include "plasma/Vector.h"
 #include "cube/CubeShader.h"
+#include "cube/DeferredDevice.h"
 #include "cube/GameController.h"
 #include "cube/DefaultBlocks.h"
 #include "cube/Options.h"
@@ -160,6 +161,8 @@ bool initializeDirect3D()
         g_direct3d = 0;
         return false;
     }
+    // Everything draws through the wrapper that can hand the frame's calls to a drawing thread.
+    g_device = cube::createDeferredDevice(g_device);
     g_engine = new plasma::D3D9Engine(g_device);
     g_engine->getFontEngine()->addFontPath(L"c:\\windows\\fonts");
     if (!g_engine->setupShadersAndFrameBuffer()) {

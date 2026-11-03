@@ -9,6 +9,7 @@
 #include "cube/WorldBlocks.h"
 #include "cube/Chunk.h"
 #include "cube/CubeShader.h"
+#include "cube/DeferredDevice.h"
 #include "cube/Noise.h"
 #include "cube/Sprite.h"
 #include "cube/RaceIds.h"
@@ -113,6 +114,7 @@ static bool sameUploadedLights(const Chunk &a, const Chunk &b)
 void GameController::render()
 {
     int startTime = timeGetTime();
+    setThreadedRendering(m_device, m_options.threadedRendering != 0);
     // The cloud sprite is tinted the sky's blue.
     Sprite *cloud = m_world.m_spriteManager.sprite(SpriteCloud02);
     if (cloud)

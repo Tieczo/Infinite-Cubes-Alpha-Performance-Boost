@@ -41,7 +41,8 @@ Options::Options()
       creatureDistance(100),
       fastCreatureUpdates(1),
       fastTerrainLoading(1),
-      fastPlantScan(1)
+      fastPlantScan(1),
+      threadedRendering(0)
 {}
 
 void Options::load()
@@ -88,6 +89,8 @@ void Options::load()
             file >> fastTerrainLoading;
         if (key == "fastPlantScan")
             file >> fastPlantScan;
+        if (key == "threadedRendering")
+            file >> threadedRendering;
     }
     if (creatureDistance > MaximumCreatureDistance)
         creatureDistance = MaximumCreatureDistance;
@@ -114,6 +117,7 @@ void Options::save()
     file << "fastCreatureUpdates " << fastCreatureUpdates << std::endl;
     file << "fastTerrainLoading " << fastTerrainLoading << std::endl;
     file << "fastPlantScan " << fastPlantScan << std::endl;
+    file << "threadedRendering " << threadedRendering << std::endl;
 }
 
 }

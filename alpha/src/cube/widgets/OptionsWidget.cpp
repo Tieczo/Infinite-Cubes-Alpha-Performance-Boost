@@ -70,6 +70,7 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
       m_game(game)
 {
     m_resolutionIndex = 0;
+    m_page = 0;
     m_previousFullscreen = leftButton->instance(node);
     m_previousFullscreen->setTransformation(leftButton->m_transformation->clone());
     m_previousFullscreen->setDisplay(leftButton->m_display->clone());
@@ -240,6 +241,22 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextFastPlantScan->setDisplay(rightButton->m_display->clone());
     m_nextFastPlantScan->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
                                              &OptionsWidget::FastPlantScanToggle, true);
+    m_previousThreadedRendering = leftButton->instance(node);
+    m_previousThreadedRendering->setTransformation(leftButton->m_transformation->clone());
+    m_previousThreadedRendering->setDisplay(leftButton->m_display->clone());
+    m_previousThreadedRendering->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::ThreadedRenderingToggle, true);
+    m_nextThreadedRendering = rightButton->instance(node);
+    m_nextThreadedRendering->setTransformation(rightButton->m_transformation->clone());
+    m_nextThreadedRendering->setDisplay(rightButton->m_display->clone());
+    m_nextThreadedRendering->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::ThreadedRenderingToggle, true);
+    m_previousPage = leftButton->instance(node);
+    m_previousPage->setTransformation(leftButton->m_transformation->clone());
+    m_previousPage->setDisplay(leftButton->m_display->clone());
+    m_previousPage->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::PageToggle, true);
+    m_nextPage = rightButton->instance(node);
+    m_nextPage->setTransformation(rightButton->m_transformation->clone());
+    m_nextPage->setDisplay(rightButton->m_display->clone());
+    m_nextPage->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::PageToggle, true);
     m_applyButton = actionButtonTemplate->clone(node);
     m_okButton = actionButtonTemplate->clone(node);
     m_cancelButton = actionButtonTemplate->clone(node);
@@ -252,6 +269,7 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_applyButton->widget()->connect(plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::Apply, true, true);
     m_okButton->widget()->connect(plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::Ok, true, true);
     m_cancelButton->widget()->connect(plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::Cancel, true, true);
+    showPage();
 }
 
 // The options screen: each setting's name at x 15 and its value centred right of x 240, 30 units
@@ -259,6 +277,10 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
 // value is centred in the width less 250.
 void OptionsWidget::draw()
 {
+    if (m_page == 1) {
+        drawPerformancePage();
+        return;
+    }
     std::wstringstream text;
     if (m_options.fullscreen)
         text << L"Fullscreen";
@@ -578,72 +600,8 @@ void OptionsWidget::draw()
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
         plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
     text.str(L"");
-    text << (m_options.fastCreatureUpdates ? "Yes" : "No");
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Creature Updates", 0.0f, 0.0f, 15.0f, 447.0f, 12.0f, 3.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Creature Updates", 0.0f, 0.0f, 15.0f, 447.0f, 12.0f, 0.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 447.0f, 12.0f, 3.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 447.0f, 12.0f, 0.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    text.str(L"");
-    text << (m_options.fastTerrainLoading ? "Yes" : "No");
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Terrain Loading", 0.0f, 0.0f, 15.0f, 477.0f, 12.0f, 3.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Terrain Loading", 0.0f, 0.0f, 15.0f, 477.0f, 12.0f, 0.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 477.0f, 12.0f, 3.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 477.0f, 12.0f, 0.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    text.str(L"");
-    text << (m_options.fastPlantScan ? "Yes" : "No");
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Plant Scan", 0.0f, 0.0f, 15.0f, 507.0f, 12.0f, 3.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(L"resource1.dat", L"Fast Plant Scan", 0.0f, 0.0f, 15.0f, 507.0f, 12.0f, 0.0f,
-                                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-                                          plasma::TEXT_FLAGS_NONE, -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 507.0f, 12.0f, 3.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    m_engine->getFontEngine()->renderText(
-        L"resource1.dat", text.str(), 0.0f, 0.0f, (getContentWidth() - 250.0f) * 0.5f + 240.0f, 507.0f, 12.0f, 0.0f,
-        plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements,
-        plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER), -1.0f, true);
-    text.str(L"");
+    drawRow(L"Performance", L"More", 447.0f);
+    colorArrows(m_previousPage, m_nextPage);
     m_previousFullscreen->display()->setFillColor(m_previousFullscreen->widget()->isPointerOver()
                                                       ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                                       : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
@@ -728,24 +686,76 @@ void OptionsWidget::draw()
     m_nextCreatureDistance->display()->setFillColor(m_nextCreatureDistance->widget()->isPointerOver()
                                      ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
                                      : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_previousFastCreatureUpdates->display()->setFillColor(m_previousFastCreatureUpdates->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_nextFastCreatureUpdates->display()->setFillColor(m_nextFastCreatureUpdates->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_previousFastTerrainLoading->display()->setFillColor(m_previousFastTerrainLoading->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_nextFastTerrainLoading->display()->setFillColor(m_nextFastTerrainLoading->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_previousFastPlantScan->display()->setFillColor(m_previousFastPlantScan->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
-    m_nextFastPlantScan->display()->setFillColor(m_nextFastPlantScan->widget()->isPointerOver()
-                                     ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
-                                     : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+}
+
+void OptionsWidget::drawRow(const std::wstring &name, const std::wstring &value, float y)
+{
+    plasma::FontEngine *fonts = m_engine->getFontEngine();
+    float valueX = (getContentWidth() - 250.0f) * 0.5f + 240.0f;
+    // Stroked black under white, as on the general page.
+    for (int pass = 0; pass < 2; pass++) {
+        float stroke = pass == 0 ? 3.0f : 0.0f;
+        plasma::Vector<4, float> strokeColor(0.0f, 0.0f, 0.0f, pass == 0 ? 1.0f : 0.0f);
+        fonts->renderText(L"resource1.dat", name, 0.0f, 0.0f, 15.0f, y, 12.0f, stroke,
+                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements, strokeColor.m_elements,
+                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, plasma::TEXT_FLAGS_NONE, -1.0f,
+                          true);
+    }
+    for (int pass = 0; pass < 2; pass++) {
+        float stroke = pass == 0 ? 3.0f : 0.0f;
+        plasma::Vector<4, float> strokeColor(0.0f, 0.0f, 0.0f, pass == 0 ? 1.0f : 0.0f);
+        fonts->renderText(L"resource1.dat", value, 0.0f, 0.0f, valueX, y, 12.0f, stroke,
+                          plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f).m_elements, strokeColor.m_elements,
+                          plasma::Vector<4, float>(0.0f, 0.0f, 0.0f, 0.0f).m_elements, (1 << plasma::TEXT_CENTER),
+                          -1.0f, true);
+    }
+}
+
+void OptionsWidget::colorArrows(plasma::Node *previous, plasma::Node *next)
+{
+    previous->display()->setFillColor(previous->widget()->isPointerOver()
+                                          ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                          : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+    next->display()->setFillColor(next->widget()->isPointerOver() ? plasma::Vector<4, float>(0.0f, 1.0f, 1.0f, 1.0f)
+                                                                  : plasma::Vector<4, float>(1.0f, 1.0f, 1.0f, 1.0f));
+}
+
+// The performance page: back to the general settings, then the optimisations' switches.
+void OptionsWidget::drawPerformancePage()
+{
+    drawRow(L"Performance", L"Back", 27.0f);
+    drawRow(L"Fast Creature Updates", m_options.fastCreatureUpdates ? L"Yes" : L"No", 57.0f);
+    drawRow(L"Fast Terrain Loading", m_options.fastTerrainLoading ? L"Yes" : L"No", 87.0f);
+    drawRow(L"Fast Plant Scan", m_options.fastPlantScan ? L"Yes" : L"No", 117.0f);
+    drawRow(L"Threaded Rendering", m_options.threadedRendering ? L"Yes" : L"No", 147.0f);
+    colorArrows(m_previousPage, m_nextPage);
+    colorArrows(m_previousFastCreatureUpdates, m_nextFastCreatureUpdates);
+    colorArrows(m_previousFastTerrainLoading, m_nextFastTerrainLoading);
+    colorArrows(m_previousFastPlantScan, m_nextFastPlantScan);
+    colorArrows(m_previousThreadedRendering, m_nextThreadedRendering);
+}
+
+void OptionsWidget::showPage()
+{
+    plasma::Node *general[] = {m_previousFullscreen,     m_nextFullscreen,     m_previousResolution,
+                               m_nextResolution,         m_previousAntiAliasing, m_nextAntiAliasing,
+                               m_previousRenderDistance, m_nextRenderDistance, m_previousSoundVolume,
+                               m_nextSoundVolume,        m_previousMusicVolume, m_nextMusicVolume,
+                               m_previousCameraSpeed,    m_nextCameraSpeed,    m_previousCameraSmoothness,
+                               m_nextCameraSmoothness,   m_previousInvertY,    m_nextInvertY,
+                               m_previousMinTimeStep,    m_nextMinTimeStep,    m_previousLanguage,
+                               m_nextLanguage,           m_previousShowFPS,    m_nextShowFPS,
+                               m_previousPlantDistance,  m_nextPlantDistance,  m_previousCreatureDistance,
+                               m_nextCreatureDistance};
+    plasma::Node *performance[] = {m_previousFastCreatureUpdates, m_nextFastCreatureUpdates,
+                                   m_previousFastTerrainLoading,  m_nextFastTerrainLoading,
+                                   m_previousFastPlantScan,       m_nextFastPlantScan,
+                                   m_previousThreadedRendering,   m_nextThreadedRendering};
+    for (plasma::Node *button : general)
+        button->setVisible(m_page == 0);
+    for (plasma::Node *button : performance)
+        button->setVisible(m_page == 1);
+    resized();
 }
 
 void OptionsWidget::AntiAliasingDecrease()
@@ -863,6 +873,17 @@ void OptionsWidget::FastPlantScanToggle()
     m_options.fastPlantScan = !m_options.fastPlantScan;
 }
 
+void OptionsWidget::ThreadedRenderingToggle()
+{
+    m_options.threadedRendering = !m_options.threadedRendering;
+}
+
+void OptionsWidget::PageToggle()
+{
+    m_page = 1 - m_page;
+    showPage();
+}
+
 void OptionsWidget::FastCreatureUpdatesToggle()
 {
     m_options.fastCreatureUpdates = !m_options.fastCreatureUpdates;
@@ -978,17 +999,19 @@ void OptionsWidget::resized()
     button = m_nextCreatureDistance->m_widget;
     button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 402.0f, true);
 
-    m_previousFastCreatureUpdates->m_widget->moveTo(240.0f, 432.0f, true);
-    button = m_nextFastCreatureUpdates->m_widget;
-    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 432.0f, true);
-
-    m_previousFastTerrainLoading->m_widget->moveTo(240.0f, 462.0f, true);
-    button = m_nextFastTerrainLoading->m_widget;
-    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 462.0f, true);
-
-    m_previousFastPlantScan->m_widget->moveTo(240.0f, 492.0f, true);
-    button = m_nextFastPlantScan->m_widget;
-    button->moveTo(viewWidth() - button->viewWidth() - 15.0f, 492.0f, true);
+    // The page row and the performance switches: on the general page the row in place of the switches,
+    // on the performance page the row first, then the switches.
+    plasma::Node *pageRows[][2] = {{m_previousPage, m_nextPage},
+                                   {m_previousFastCreatureUpdates, m_nextFastCreatureUpdates},
+                                   {m_previousFastTerrainLoading, m_nextFastTerrainLoading},
+                                   {m_previousFastPlantScan, m_nextFastPlantScan},
+                                   {m_previousThreadedRendering, m_nextThreadedRendering}};
+    for (int i = 0; i < 5; i++) {
+        float y = m_page == 1 ? 12.0f + i * 30.0f : 432.0f;
+        pageRows[i][0]->m_widget->moveTo(240.0f, y, true);
+        button = pageRows[i][1]->m_widget;
+        button->moveTo(viewWidth() - button->viewWidth() - 15.0f, y, true);
+    }
 
     button = m_applyButton->m_widget;
     button->moveTo(20.0f, getViewHeight() - button->getViewHeight() - 20.0f, true);
@@ -1038,6 +1061,10 @@ void OptionsWidget::SoundVolumeIncrease()
 void OptionsWidget::setOptions(const Options &options)
 {
     m_options = options;
+    if (m_page != 0) {
+        m_page = 0;
+        showPage();
+    }
     m_resolutionIndex = 0;
     for (int i = 0; i < static_cast<int>(m_resolutions.size()); ++i) {
         if (m_resolutions[i] == plasma::Vector<2, int>(options.resolutionX, options.resolutionY))

@@ -37,6 +37,11 @@ public:
     void FastCreatureUpdatesToggle();
     void FastTerrainLoadingToggle();
     void FastPlantScanToggle();
+    void ThreadedRenderingToggle();
+    // Switches between the general settings and the performance page (not in the original), which holds the
+    // switches of the optimisations: Fast Creature Updates, Fast Terrain Loading, Fast Plant Scan and Threaded
+    // Rendering.
+    void PageToggle();
     void ResolutionDecrease();
     void ResolutionIncrease();
     void SoundVolumeDecrease();
@@ -79,6 +84,10 @@ public:
     plasma::Node *m_nextFastTerrainLoading;
     plasma::Node *m_previousFastPlantScan;
     plasma::Node *m_nextFastPlantScan;
+    plasma::Node *m_previousThreadedRendering;
+    plasma::Node *m_nextThreadedRendering;
+    plasma::Node *m_previousPage;
+    plasma::Node *m_nextPage;
     plasma::Node *m_previousMinTimeStep;
     plasma::Node *m_nextMinTimeStep;
     plasma::Node *m_previousLanguage;
@@ -88,5 +97,14 @@ public:
     plasma::Node *m_cancelButton;
     Options m_options;
     int m_resolutionIndex;
+    int m_page; // 0 the general settings, 1 the performance page
+
+private:
+    // A setting's name and value in the row at y; the arrow buttons cyan under the pointer.
+    void drawRow(const std::wstring &name, const std::wstring &value, float y);
+    void colorArrows(plasma::Node *previous, plasma::Node *next);
+    void drawPerformancePage();
+    // Shows the arrow buttons of the page shown, hides the others and places them.
+    void showPage();
 };
 }

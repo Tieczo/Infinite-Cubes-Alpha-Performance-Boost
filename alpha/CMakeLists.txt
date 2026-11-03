@@ -136,6 +136,7 @@ add_executable(Cube WIN32
  src/cube/GameController.cpp
  src/cube/GameControllerMovement.cpp
  src/cube/GameControllerRender.cpp
+ src/cube/DeferredDevice.cpp
  src/cube/GameControllerShading.cpp
  src/cube/widgets/InventoryWidget.cpp
  src/cube/Item.cpp
