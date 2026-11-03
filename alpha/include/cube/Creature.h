@@ -4,6 +4,7 @@
 #include <winsock2.h>
 #include "cube/SkillIds.h"
 #include <array>
+#include <cstddef>
 #include <list>
 #include <map>
 #include <set>
@@ -35,6 +36,52 @@ class SpriteManager;
 class Behavior;
 class World;
 struct ServerUpdates;
+
+// Hands out the path search's map nodes from a free list of the thread, which keeps the nodes it gets back
+// instead of returning them to the heap: the search builds and drops thousands of nodes per frame. A map
+// with it holds the same elements in the same order as with std::allocator.
+template <typename T> struct PathAllocator {
+    typedef T value_type;
+    PathAllocator() {}
+    template <typename U> PathAllocator(const PathAllocator<U> &) {}
+    T *allocate(std::size_t count)
+    {
+        if (count != 1)
+            return static_cast<T *>(::operator new(count * sizeof(T)));
+        FreeNode *&head = freeList();
+        if (!head)
+            return static_cast<T *>(::operator new(sizeof(Slot)));
+        FreeNode *node = head;
+        head = node->next;
+        return reinterpret_cast<T *>(node);
+    }
+    void deallocate(T *pointer, std::size_t count)
+    {
+        if (count != 1) {
+            ::operator delete(pointer);
+            return;
+        }
+        FreeNode *node = reinterpret_cast<FreeNode *>(pointer);
+        node->next = freeList();
+        freeList() = node;
+    }
+    template <typename U> bool operator==(const PathAllocator<U> &) const { return true; }
+    template <typename U> bool operator!=(const PathAllocator<U> &) const { return false; }
+
+private:
+    struct FreeNode {
+        FreeNode *next;
+    };
+    union Slot {
+        FreeNode free;
+        alignas(T) unsigned char value[sizeof(T)];
+    };
+    static FreeNode *&freeList()
+    {
+        static thread_local FreeNode *head = 0;
+        return head;
+    }
+};
 
 class Creature {
 public:
@@ -584,12 +631,17 @@ public:
     // coordinates. The key is a fixed array (a vector of three in the original): the same order (both compare
     // lexicographically), without a heap allocation for every lookup.
     typedef std::array<int, 3> PathKey;
-    std::map<PathKey, PathNode>::iterator m_nearestPathNode; // the discovered block with the lowest heuristic
-    std::map<PathKey, PathNode> m_pathNodes;                 // all discovered blocks
+    // The maps take their nodes from PathAllocator.
+    typedef std::map<PathKey, PathNode, std::less<PathKey>, PathAllocator<std::pair<const PathKey, PathNode>>>
+        PathNodeMap;
+    typedef std::map<PathKey, PathNode *, std::less<PathKey>, PathAllocator<std::pair<const PathKey, PathNode *>>>
+        PendingPathNodeMap;
+    PathNodeMap::iterator m_nearestPathNode; // the discovered block with the lowest heuristic
+    PathNodeMap m_pathNodes;                 // all discovered blocks
     // Pending blocks, expanded by lowest totalCost, in key order (a set of keys in the original), each with
     // its node in m_pathNodes, or null when the block has none: the search scans them without a lookup.
     // Kept equal to findPathNode by setPathNode and by refreshPendingPathNodes after m_pathNodes is replaced.
-    std::map<PathKey, PathNode *> m_pendingPathNodes;
+    PendingPathNodeMap m_pendingPathNodes;
     void refreshPendingPathNodes();
     plasma::Vector<3, int> m_pathStartBlock;
     plasma::Vector<3, Fixed> m_pathStart;
