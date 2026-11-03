@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <string>
 #include <utility>
 #include <vector>
 #include "plasma/Matrix.h"
@@ -31,6 +33,20 @@ struct ScalableGlyph {
 };
 
 typedef std::map<int, ScalableGlyph *> ScalableGlyphMap;
+
+// One glyph rectangle drawGlyphs drew: its texture, place and size, and whether in the outline colour.
+struct ScalableTextRectangle {
+    Texture *texture;
+    Vector<2, float> position;
+    Vector<2, float> size;
+    bool outline;
+};
+// What drawGlyphs did for one text in one font state (not in the original): the rectangles in drawing order
+// and every glyph it looked up (they are marked used again when the text is drawn from this record).
+struct ScalableTextLayout {
+    std::vector<ScalableTextRectangle> rectangles;
+    std::vector<ScalableGlyph *> glyphs;
+};
 typedef std::pair<std::pair<int, int>, int> ScalableSizeKey;
 typedef std::pair<std::pair<int, int>, std::vector<long>> ScalableTransformKey;
 typedef std::map<ScalableSizeKey, ScalableGlyphMap *> ScalableSizeCache;
@@ -126,6 +142,9 @@ public:
     Vector<2, float> m_minimum;
     Vector<2, float> m_maximum;
     bool m_hinted;
+    // drawGlyphs' records, keyed by the text and everything else it reads (not in the original); emptied whenever
+    // glyphs are deleted.
+    std::unordered_map<std::string, ScalableTextLayout> m_textLayouts;
     CRITICAL_SECTION m_lock;
 };
 

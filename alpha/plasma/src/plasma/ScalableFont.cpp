@@ -83,6 +83,7 @@ void ScalableFont::collectUnusedGlyphs()
                         if (glyph->second->m_texture)
                             m_engine->deleteTexture(glyph->second->m_texture);
                         delete glyph->second;
+                        m_textLayouts.clear();
                         unused.push_back((unsigned short)glyph->first);
                     }
                 }
@@ -115,6 +116,7 @@ void ScalableFont::collectUnusedGlyphs()
                         if (glyph->second->m_texture)
                             m_engine->deleteTexture(glyph->second->m_texture);
                         delete glyph->second;
+                        m_textLayouts.clear();
                         unused.push_back((unsigned short)glyph->first);
                     }
                 }
@@ -139,6 +141,7 @@ void ScalableFont::collectUnusedGlyphs()
 void ScalableFont::clear()
 {
     lock();
+    m_textLayouts.clear();
     if (m_face) {
         FT_Done_Face(m_face);
         m_face = 0;
@@ -222,6 +225,46 @@ void ScalableFont::renderText(const std::wstring &text, float x, float y, float 
 void ScalableFont::drawGlyphs(const std::wstring &text, float x, float y, const float *fill, const float *outline,
                               const float *extrusion, int flags)
 {
+    // A text drawn before in the same font state is drawn again from its record (not in the original): the same
+    // rectangles in the same order, without measuring the text again. Vector glyphs (plasma fonts) are not
+    // recorded.
+    std::string layoutKey;
+    ScalableTextLayout *layout = 0;
+    if (!m_plasmaRoot) {
+        layoutKey.assign((const char *)text.data(), text.size() * sizeof(wchar_t));
+        auto add = [&layoutKey](const void *data, size_t size) { layoutKey.append((const char *)data, size); };
+        add(&x, sizeof x);
+        add(&y, sizeof y);
+        add(&flags, sizeof flags);
+        add(fill, 4 * sizeof(float));
+        add(outline, 4 * sizeof(float));
+        add(&m_transform.m_elements[0], 16 * sizeof(float));
+        add(&m_glyphs, sizeof m_glyphs);
+        add(&m_strokeGlyphs, sizeof m_strokeGlyphs);
+        add(&m_hinted, sizeof m_hinted);
+        add(&m_width, sizeof m_width);
+        add(&m_height, sizeof m_height);
+        add(&m_stroke, sizeof m_stroke);
+        add(&m_spacing, sizeof m_spacing);
+        add(&m_leading, sizeof m_leading);
+        std::unordered_map<std::string, ScalableTextLayout>::iterator found = m_textLayouts.find(layoutKey);
+        if (found != m_textLayouts.end()) {
+            m_engine->enableTexture2D();
+            for (const ScalableTextRectangle &rectangle : found->second.rectangles) {
+                rectangle.texture->bind(1);
+                m_engine->drawTexturedRectangle(
+                    rectangle.position, rectangle.size, Vector<2, float>(0.0f, 0.0f), Vector<2, float>(1.0f, 1.0f),
+                    *reinterpret_cast<const Vector<4, float> *>(rectangle.outline ? outline : fill));
+            }
+            m_engine->disableTexture2D();
+            for (ScalableGlyph *glyph : found->second.glyphs)
+                glyph->m_used = true;
+            return;
+        }
+        if (m_textLayouts.size() >= 2048)
+            m_textLayouts.clear();
+        layout = &m_textLayouts[layoutKey];
+    }
     float scale = 1.0f;
     if (m_plasmaRoot)
         scale = m_height / (m_maximum.m_elements[1] - m_minimum.m_elements[1]);
@@ -277,13 +320,21 @@ void ScalableFont::drawGlyphs(const std::wstring &text, float x, float y, const 
                     Vector<2, float> position(transformedPosition + glyphPosition);
                     m_engine->drawTexturedRectangle(position, glyph->m_size, Vector<2, float>(0.0f, 0.0f),
                                                     Vector<2, float>(1.0f, 1.0f), color);
+                    if (layout)
+                        layout->rectangles.push_back({glyph->m_texture, position, glyph->m_size, false});
                 } else {
                     Vector<2, int> pixelPosition(m_transform.transform(pen) + glyph->m_position);
                     Vector<2, float> position(pixelPosition);
                     m_engine->drawTexturedRectangle(position, glyph->m_size, Vector<2, float>(0.0f, 0.0f),
                                                     Vector<2, float>(1.0f, 1.0f), color);
+                    if (layout)
+                        layout->rectangles.push_back({glyph->m_texture, position, glyph->m_size, false});
                 }
             } else if (glyph->m_node) {
+                if (layout) {
+                    m_textLayouts.erase(layoutKey);
+                    layout = 0;
+                }
                 Matrix<float> matrix;
                 m_engine->getModelViewMatrix(matrix);
                 Matrix<float> previous = matrix;
@@ -307,11 +358,15 @@ void ScalableFont::drawGlyphs(const std::wstring &text, float x, float y, const 
                     Vector<2, float> position(transformedPosition + glyphPosition);
                     m_engine->drawTexturedRectangle(position, stroke->m_size, Vector<2, float>(0.0f, 0.0f),
                                                     Vector<2, float>(1.0f, 1.0f), color);
+                    if (layout)
+                        layout->rectangles.push_back({stroke->m_texture, position, stroke->m_size, true});
                 } else {
                     Vector<2, int> pixelPosition(m_transform.transform(pen) + stroke->m_position);
                     Vector<2, float> position(pixelPosition);
                     m_engine->drawTexturedRectangle(position, stroke->m_size, Vector<2, float>(0.0f, 0.0f),
                                                     Vector<2, float>(1.0f, 1.0f), color);
+                    if (layout)
+                        layout->rectangles.push_back({stroke->m_texture, position, stroke->m_size, true});
                 }
             }
         }
@@ -338,6 +393,18 @@ void ScalableFont::drawGlyphs(const std::wstring &text, float x, float y, const 
         }
     }
     m_engine->disableTexture2D();
+    if (layout) {
+        for (size_t i = 0; i < text.size(); ++i) {
+            ScalableGlyphMap *maps[2] = {m_glyphs, m_stroke > 0.0f ? m_strokeGlyphs : 0};
+            for (ScalableGlyphMap *map : maps) {
+                if (!map)
+                    continue;
+                ScalableGlyphMap::iterator glyph = map->find(text[i]);
+                if (glyph != map->end() && glyph->second)
+                    layout->glyphs.push_back(glyph->second);
+            }
+        }
+    }
     if (m_plasmaRoot) {
         m_engine->popFillColor();
         m_engine->popOutlineColor();
