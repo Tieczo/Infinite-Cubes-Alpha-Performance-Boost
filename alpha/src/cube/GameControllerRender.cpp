@@ -2221,6 +2221,7 @@ void GameController::render()
     m_device->SetTexture(0, m_shadowTexture);
     m_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_BORDER);
     m_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_BORDER);
+    std::vector<SunVertex> markSquares;
     for (std::list<BulletPacket>::iterator projectile = m_world.m_projectiles.begin();
          projectile != m_world.m_projectiles.end(); ++projectile) {
         if (projectile->projectileType != ProjectileCloud ||
@@ -2234,6 +2235,8 @@ void GameController::render()
         if (projectile->element == ElementFire)
             markColor = D3DCOLOR_ARGB(255, 255, 50 - pulse, 0);
         int extent = (int)(size + 1.0f);
+        // The squares share one transform: gathered as a triangle list and drawn at once.
+        markSquares.clear();
         for (int x = -extent; x <= extent; x++) {
             for (int y = -extent; y <= extent; y++) {
                 int z = center[2];
@@ -2261,13 +2264,23 @@ void GameController::render()
                     {plasma::Vector<3, float>((float)x, (float)(y + 1), (float)z), markColor,
                      plasma::Vector<2, float>(u, v + step)},
                 };
-                plasma::Matrix<float> markModel;
-                markModel.identity();
-                markModel.translate((float)(Fixed(center[0]) + m_drawOriginX),
-                                    (float)(Fixed(center[1]) + m_drawOriginY), 0.01f);
-                m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&markModel);
-                m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(SunVertex));
+                // The fan's two triangles, their corners in the order a fan is drawn in.
+                markSquares.push_back(quad[1]);
+                markSquares.push_back(quad[2]);
+                markSquares.push_back(quad[0]);
+                markSquares.push_back(quad[2]);
+                markSquares.push_back(quad[3]);
+                markSquares.push_back(quad[0]);
             }
+        }
+        if (!markSquares.empty()) {
+            plasma::Matrix<float> markModel;
+            markModel.identity();
+            markModel.translate((float)(Fixed(center[0]) + m_drawOriginX),
+                                (float)(Fixed(center[1]) + m_drawOriginY), 0.01f);
+            m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&markModel);
+            m_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, (UINT)markSquares.size() / 3, &markSquares[0],
+                                      sizeof(SunVertex));
         }
     }
     if (!m_startScreen->isVisible() && !m_characterListScreen->isVisible() && !m_worldListScreen->isVisible() &&
