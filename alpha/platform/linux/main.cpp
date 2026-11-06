@@ -20,6 +20,7 @@
 #include "plasma/StringConversion.h"
 #include "plasma/Vector.h"
 #include "cube/CubeShader.h"
+#include "cube/DeferredDevice.h"
 #include "cube/GameController.h"
 #include "cube/DefaultBlocks.h"
 #include "cube/Options.h"
@@ -283,6 +284,8 @@ bool initializeDirect3D(int screenWidth, int screenHeight)
         g_direct3d = 0;
         return false;
     }
+    // Everything draws through the wrapper that can hand the frame's calls to a drawing thread.
+    g_device = cube::createDeferredDevice(g_device);
     g_backBufferWidth = screenWidth;
     g_backBufferHeight = screenHeight;
     g_engine = new plasma::D3D9Engine(g_device);
