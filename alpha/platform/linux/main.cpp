@@ -24,6 +24,7 @@
 #include "cube/GameController.h"
 #include "cube/DefaultBlocks.h"
 #include "cube/Options.h"
+#include "cube/SpikeLog.h"
 #include "cube/XAudio2Engine.h"
 
 using namespace cube;
@@ -167,8 +168,27 @@ static bool handleEvent(const SDL_Event &event)
     case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         return false;
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        spikeEvent("window size changed");
+        spikeResetReason("size");
         resetDevice(false);
+        break;
+    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        spikeEvent("window focus gained");
+        spikeResetReason("focus");
+        resetDevice(false);
+        break;
+    // Only for the spike log.
+    case SDL_EVENT_WINDOW_FOCUS_LOST:
+        spikeEvent("window focus lost");
+        break;
+    case SDL_EVENT_WINDOW_MINIMIZED:
+        spikeEvent("window minimized");
+        break;
+    case SDL_EVENT_WINDOW_MAXIMIZED:
+        spikeEvent("window maximized");
+        break;
+    case SDL_EVENT_WINDOW_RESTORED:
+        spikeEvent("window restored");
         break;
     case SDL_EVENT_TEXT_INPUT: {
         // One WM_CHAR per character: the engine gets the code point, the chat its low byte.
@@ -251,6 +271,7 @@ void frame()
     if (g_game->m_options.resolutionX != options.resolutionX || g_game->m_options.resolutionY != options.resolutionY ||
         g_game->m_options.fullscreen != options.fullscreen || g_game->m_options.antiAliasing != options.antiAliasing) {
         options = g_game->m_options;
+        spikeResetReason("options");
         resetDevice(false);
     }
     s_lastTime = now;
@@ -316,6 +337,7 @@ bool initializeDirect3D(int screenWidth, int screenHeight)
 // options' antialiasing, under the game's update locks.
 void resetDevice(bool unused)
 {
+    spikeResetBegin();
     bool fullscreen = options.fullscreen != 0;
     int width, height;
     if (fullscreen) {
@@ -324,8 +346,10 @@ void resetDevice(bool unused)
     } else {
         clientSize(width, height);
     }
-    if (width <= 0 || height <= 0)
+    if (width <= 0 || height <= 0) {
+        spikeResetDone(width, height);
         return;
+    }
     if (g_device) {
         if (g_engine) {
             g_engine->releaseDeviceResources();
@@ -367,6 +391,7 @@ void resetDevice(bool unused)
             g_engine->restoreDeviceResources();
     }
     g_deviceLost = false;
+    spikeResetDone(width, height);
 }
 
 // Opens the window and the devices, creates the game and runs the event loop until the window closes.
@@ -470,6 +495,7 @@ int main(int argc, char **argv)
     bool running = true;
     while (running) {
         DWORD frameStart = timeGetTime();
+        spikeFrame(g_game->m_options.spikeLog != 0, g_game->m_world.m_client);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (!handleEvent(event)) {
