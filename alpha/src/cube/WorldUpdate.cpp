@@ -1463,11 +1463,14 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                              stack++) {
                             ItemStack &entry = *stack;
                             while (entry.quantity != 0) {
+                                // Drawn y, x, then the angle, as in the original game.
+                                float offsetY = 2.0f - (float)rand() * 4.0f / float(RAND_MAX);
+                                float offsetX = 2.0f - (float)rand() * 4.0f / float(RAND_MAX);
+                                float angle = (float)rand() * 360.0f / float(RAND_MAX);
                                 dropItem(entry.item,
-                                         object.position + plasma::Vector<3, Fixed>(plasma::Vector<3, float>(
-                                                               2.0f - (float)rand() * 4.0f / float(RAND_MAX),
-                                                               2.0f - (float)rand() * 4.0f / float(RAND_MAX), 0.0f)),
-                                         (float)rand() * 360.0f / float(RAND_MAX), 1.0f, &changedZones);
+                                         object.position +
+                                             plasma::Vector<3, Fixed>(plasma::Vector<3, float>(offsetX, offsetY, 0.0f)),
+                                         angle, 1.0f, &changedZones);
                                 entry.removeOne();
                             }
                         }

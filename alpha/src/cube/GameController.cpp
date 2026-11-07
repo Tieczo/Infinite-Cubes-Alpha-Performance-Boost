@@ -2941,10 +2941,11 @@ void GameController::createParticles(Sprite *sprite, const plasma::Matrix<float>
                 plasma::Vector<3, Fixed> centerPosition(center);
                 particle.velocity = (particle.position - centerPosition) * Fixed(2.0f);
                 particle.rotation = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
-                particle.spin = plasma::Vector<3, float>((float)rand() / float(RAND_MAX) - 0.5f,
-                                                         (float)rand() / float(RAND_MAX) - 0.5f,
-                                                         (float)rand() / float(RAND_MAX) - 0.5f) *
-                                100.0f;
+                // Drawn x, y, z, as in the original game.
+                float spinX = (float)rand() / float(RAND_MAX) - 0.5f;
+                float spinY = (float)rand() / float(RAND_MAX) - 0.5f;
+                float spinZ = (float)rand() / float(RAND_MAX) - 0.5f;
+                particle.spin = plasma::Vector<3, float>(spinX, spinY, spinZ) * 100.0f;
                 particle.color =
                     plasma::Vector<4, float>(voxel[0] / 255.0f, voxel[1] / 255.0f, voxel[2] / 255.0f, 1.0f) * color;
                 particle.size = 1.0f;
@@ -8154,14 +8155,17 @@ void GameController::update(int milliseconds)
             particle.type = it->type;
             particle.age = 0;
             particle.position = it->position;
-            particle.velocity = it->acceleration + it->spread * 2.0f *
-                                                       plasma::Vector<3, float>(rand() / float(RAND_MAX) - 0.5f,
-                                                                                rand() / float(RAND_MAX) - 0.5f,
-                                                                                rand() / float(RAND_MAX) - 0.5f);
+            // Both vectors are drawn z, y, x, as in the original game.
+            float spreadZ = rand() / float(RAND_MAX) - 0.5f;
+            float spreadY = rand() / float(RAND_MAX) - 0.5f;
+            float spreadX = rand() / float(RAND_MAX) - 0.5f;
+            particle.velocity =
+                it->acceleration + it->spread * 2.0f * plasma::Vector<3, float>(spreadX, spreadY, spreadZ);
             particle.rotation = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
-            particle.spin =
-                100.0f * plasma::Vector<3, float>(rand() / float(RAND_MAX) - 0.5f, rand() / float(RAND_MAX) - 0.5f,
-                                                  rand() / float(RAND_MAX) - 0.5f);
+            float spinZ = rand() / float(RAND_MAX) - 0.5f;
+            float spinY = rand() / float(RAND_MAX) - 0.5f;
+            float spinX = rand() / float(RAND_MAX) - 0.5f;
+            particle.spin = 100.0f * plasma::Vector<3, float>(spinX, spinY, spinZ);
             particle.color = it->color;
             if (it->type == ParticleFire)
                 particle.color = plasma::Vector<4, float>(1.0f, rand() / float(RAND_MAX), 0.0f, 1.0f);

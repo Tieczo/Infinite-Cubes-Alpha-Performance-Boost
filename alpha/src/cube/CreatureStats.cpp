@@ -636,6 +636,17 @@ float hangGlidingSpeed(int points)
     return (1.0f - 1.0f / (points * 0.1f + 1.0f)) * 3.0f + 1.5f;
 }
 
+namespace {
+// A random hair colour, drawn blue, green, red, as in the original game.
+plasma::Vector<3, unsigned char> randomHairColor()
+{
+    int blue = rand() % 256;
+    int green = rand() % 256;
+    int red = rand() % 256;
+    return plasma::Vector<3, unsigned char>(red, green, blue);
+}
+}
+
 // One case per race, in the order of  case blocks (the race values are not ascending).
 // Without a style (generated creatures) the hair colour is random and the face and haircut are
 // rolled from 0..99; a player's style also chooses the race (CharacterStyleWidget's race choices:
@@ -648,7 +659,7 @@ void fillAppearance(int &race, Creature::Appearance &appearance, const Creature:
     Creature::CharacterStyle randomStyle;
     const Creature::CharacterStyle *style = playerStyle;
     if (!style) {
-        randomStyle.hairColor = plasma::Vector<3, unsigned char>(rand() % 256, rand() % 256, rand() % 256);
+        randomStyle.hairColor = randomHairColor();
         randomStyle.face = rand() % CharacterStyleChoiceCount;
         randomStyle.haircut = rand() % CharacterStyleChoiceCount;
         style = &randomStyle;
@@ -777,7 +788,7 @@ void fillAppearance(int &race, Creature::Appearance &appearance, const Creature:
         appearance.size /= 1.2f;
         break;
     case RaceBullterrier:
-        appearance.hairColor = plasma::Vector<3, unsigned char>(rand() % 256, rand() % 256, rand() % 256);
+        appearance.hairColor = randomHairColor();
         appearance.headModel = rand() % BullterrierHead1VariantCount + SpriteBullterrierHead1;
         appearance.chestModel = SpriteBody2Slot0;
         appearance.feetModel = SpriteFoot;
@@ -1459,7 +1470,7 @@ void fillAppearance(int &race, Creature::Appearance &appearance, const Creature:
         appearance.appearanceFlags |= ((1 << AppearanceFlagBiteAttack) | (1 << AppearanceFlagUnarmored));
         break;
     case RaceOgre:
-        appearance.hairColor = plasma::Vector<3, unsigned char>(rand() % 256, rand() % 256, rand() % 256);
+        appearance.hairColor = randomHairColor();
         appearance.headModel = SpriteOgreHead;
         appearance.chestModel = SpriteOgreBody;
         appearance.feetModel = SpriteOgreFoot;

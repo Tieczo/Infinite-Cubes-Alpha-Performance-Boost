@@ -2043,6 +2043,14 @@ const int LeftoversRarityBias = 20;
 const int LeftoversWhiteUpperBound = 700;
 const int LeftoversGreenUpperBound = 950;
 const int LeftoversBlueUpperBound = 999;
+
+// Where a drop lands: up to a block away along x and y. x is drawn before y, as in the original game.
+plasma::Vector<3, Fixed> randomDropOffset()
+{
+    float offsetX = 1.0f - rand() * 2.0f / float(RAND_MAX);
+    float offsetY = 1.0f - rand() * 2.0f / float(RAND_MAX);
+    return plasma::Vector<3, Fixed>(plasma::Vector<3, float>(offsetX, offsetY, 0.0f));
+}
 }
 
 // What a killed creature leaves behind, each drop landing up to a block away along x and y, turned
@@ -2078,10 +2086,11 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
         worn.push_back(&creature->m_entityData.equipment.neck);
     if (!worn.empty() &&
         (rand() % 4 == 0 || (creature->m_entityData.appearance.appearanceFlags & (1 << AppearanceFlagTinted)))) {
-        plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                 1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
-        dropItem(*worn[rand() % worn.size()], creature->m_entityData.position + offset,
-                 rand() * 360.0f / float(RAND_MAX), 1.0f, changedZones);
+        plasma::Vector<3, Fixed> offset = randomDropOffset();
+        // The piece is drawn before the angle, as in the original game.
+        Item &piece = *worn[rand() % worn.size()];
+        float angle = rand() * 360.0f / float(RAND_MAX);
+        dropItem(piece, creature->m_entityData.position + offset, angle, 1.0f, changedZones);
     }
 
     if ((creature->m_entityData.hostilityType == HostilityEnemy || creature->m_entityData.race == RaceVase) &&
@@ -2092,23 +2101,20 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
         if (rand() % 2) {
             Item item = randomWeapon(level, randomRarity(creature->m_entityData.rarity, false), -1);
             item.varyLevel(0.05f, true);
-            plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                     1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+            plasma::Vector<3, Fixed> offset = randomDropOffset();
             dropItem(item, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 1.0f,
                      changedZones);
         } else {
             Item item = randomArmor(level, randomRarity(creature->m_entityData.rarity, false), -1);
             item.varyLevel(0.05f, true);
-            plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                     1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+            plasma::Vector<3, Fixed> offset = randomDropOffset();
             dropItem(item, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 1.0f,
                      changedZones);
         }
         if (rand() % 5 == 0) {
             Item food = randomPetFood(level, randomRarity(creature->m_entityData.rarity, false));
             food.varyLevel(0.05f, true);
-            plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                     1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+            plasma::Vector<3, Fixed> offset = randomDropOffset();
             dropItem(food, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 1.0f,
                      changedZones);
         }
@@ -2241,19 +2247,19 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
         }
         if (item.category == ItemCategoryNone)
             break;
-        plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                 1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+        plasma::Vector<3, Fixed> offset = randomDropOffset();
         dropItem(item, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), scale,
                  changedZones);
     }
 
     if (creature->m_entityData.hostilityType == HostilityEnemy || creature->m_entityData.race == RaceVase) {
         if (rand() % 50 == 0) {
-            plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                     1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
-            dropItem(
-                randomFormula(creature->m_entityData.level, randomRarity(creature->m_entityData.rarity + 1, false)),
-                creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 0.75f, changedZones);
+            plasma::Vector<3, Fixed> offset = randomDropOffset();
+            // The angle is drawn before the formula, as in the original game.
+            float angle = rand() * 360.0f / float(RAND_MAX);
+            int formulaRarity = randomRarity(creature->m_entityData.rarity + 1, false);
+            dropItem(randomFormula(creature->m_entityData.level, formulaRarity),
+                     creature->m_entityData.position + offset, angle, 0.75f, changedZones);
         }
         if (!(creature->m_entityData.appearance.appearanceFlags & (1 << AppearanceFlagHandAttacks)) &&
             !(creature->m_entityData.appearance.appearanceFlags & (1 << AppearanceFlagBiteAttack))) {
@@ -2273,8 +2279,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
                 coin.id = CoinCoin;
                 coin.material = ItemMaterialCopper;
                 coin.level = copper;
-                plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                         1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+                plasma::Vector<3, Fixed> offset = randomDropOffset();
                 dropItem(coin, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 0.75f,
                          changedZones);
             }
@@ -2284,8 +2289,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
                 coin.id = CoinCoin;
                 coin.material = ItemMaterialSilver;
                 coin.level = silver;
-                plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                         1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+                plasma::Vector<3, Fixed> offset = randomDropOffset();
                 dropItem(coin, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 0.75f,
                          changedZones);
             }
@@ -2295,8 +2299,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
                 coin.id = CoinCoin;
                 coin.material = ItemMaterialGold;
                 coin.level = gold;
-                plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                         1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+                plasma::Vector<3, Fixed> offset = randomDropOffset();
                 dropItem(coin, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 0.75f,
                          changedZones);
             }
@@ -2323,8 +2326,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
                 item.modifier = rand();
                 item.level = creature->m_entityData.level;
                 item.rarity = rarity;
-                plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(1.0f - rand() * 2.0f / float(RAND_MAX),
-                                                                         1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+                plasma::Vector<3, Fixed> offset = randomDropOffset();
                 dropItem(item, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX), 0.75f,
                          changedZones);
             }
@@ -2340,8 +2342,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
                 for (int j = 0; j < stack->quantity; j++) {
                     if (stack->item.category == ItemCategoryConsumable && stack->item.id == ConsumableLifePotion)
                         continue;
-                    plasma::Vector<3, Fixed> offset(plasma::Vector<3, float>(
-                        1.0f - rand() * 2.0f / float(RAND_MAX), 1.0f - rand() * 2.0f / float(RAND_MAX), 0.0f));
+                    plasma::Vector<3, Fixed> offset = randomDropOffset();
                     dropItem(stack->item, creature->m_entityData.position + offset, rand() * 360.0f / float(RAND_MAX),
                              0.75f, changedZones);
                 }

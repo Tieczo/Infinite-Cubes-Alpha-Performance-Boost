@@ -228,9 +228,12 @@ void GameController::render()
                 } else if (plant.type == PlantBirdAndOwlEmitter) {
                     if (callPeriod(plant.position, clock, 1000) !=
                             callPeriod(plant.position, clock + m_frameMilliseconds, 1000) &&
-                        rand() % 10 == 0)
-                        playSound(rand() % 2 + SoundOwl1, plant.position, 0.1f,
-                                  rand() * 0.2f / float(RAND_MAX) + 0.5f);
+                        rand() % 10 == 0) {
+                        // The pitch is drawn before the owl, as in the original game.
+                        float pitch = rand() * 0.2f / float(RAND_MAX) + 0.5f;
+                        int owl = rand() % 2 + SoundOwl1;
+                        playSound(owl, plant.position, 0.1f, pitch);
+                    }
                     return;
                 }
                 if (m_world.m_time > 43200000 && m_world.m_time < 86400000) {
@@ -967,12 +970,15 @@ void GameController::render()
                             Particle mote;
                             mote.age = 0;
                             mote.position = plant->position;
-                            mote.velocity = 4.0f * plasma::Vector<3, float>(rand() / float(RAND_MAX) - 0.5f,
-                                                                            rand() / float(RAND_MAX) - 0.5f, -0.5f);
+                            // Drawn last component first, as in the original game.
+                            float driftY = rand() / float(RAND_MAX) - 0.5f;
+                            float driftX = rand() / float(RAND_MAX) - 0.5f;
+                            mote.velocity = 4.0f * plasma::Vector<3, float>(driftX, driftY, -0.5f);
                             mote.rotation = plasma::Vector<3, float>(0.0f, 0.0f, 0.0f);
-                            mote.spin = 10.0f * plasma::Vector<3, float>(rand() / float(RAND_MAX) - 0.5f,
-                                                                         rand() / float(RAND_MAX) - 0.5f,
-                                                                         rand() / float(RAND_MAX) - 0.5f);
+                            float spinZ = rand() / float(RAND_MAX) - 0.5f;
+                            float spinY = rand() / float(RAND_MAX) - 0.5f;
+                            float spinX = rand() / float(RAND_MAX) - 0.5f;
+                            mote.spin = 10.0f * plasma::Vector<3, float>(spinX, spinY, spinZ);
                             mote.color =
                                 plasma::Vector<4, float>(plant->color[0], plant->color[1], plant->color[2], 1.0f);
                             mote.size = 0.5f;

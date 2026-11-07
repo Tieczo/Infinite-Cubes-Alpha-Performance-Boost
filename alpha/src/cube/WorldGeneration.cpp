@@ -1718,8 +1718,15 @@ void World::generateDungeon(Zone *zone, Region *region, int x, int y, int varian
         for (int ry = 0; ry < 3; ry++) {
             // Dungeon room lattice: random size and cell offsets for each room before corridor linking.
             for (int rz = 0; rz < 3; rz++) {
-                rooms[rx][ry][rz].size = plasma::Vector<3, int>(rand() % 3 - 1, rand() % 3 - 1, rand() % 3);
-                rooms[rx][ry][rz].offset = plasma::Vector<3, int>(rand() % 2, rand() % 2, rand() % 3 - 1);
+                // Both are drawn z, y, x, as in the original game.
+                int sizeZ = rand() % 3;
+                int sizeY = rand() % 3 - 1;
+                int sizeX = rand() % 3 - 1;
+                rooms[rx][ry][rz].size = plasma::Vector<3, int>(sizeX, sizeY, sizeZ);
+                int offsetZ = rand() % 3 - 1;
+                int offsetY = rand() % 2;
+                int offsetX = rand() % 2;
+                rooms[rx][ry][rz].offset = plasma::Vector<3, int>(offsetX, offsetY, offsetZ);
             }
         }
     }
@@ -1906,14 +1913,22 @@ void World::generateDungeon(Zone *zone, Region *region, int x, int y, int varian
     bool palace = variant == Region::Record::DungeonPalace;
 
     // Dungeon roof/wall/floor palette by variant. Block colours and lighting by variant.
-    plasma::Vector<3, unsigned char> roofColor(rand() % 50 + 20, rand() % 50 + 20, rand() % 50 + 20);
+    // Each colour is drawn blue, green, red, as in the original game.
+    int roofBlue = rand() % 50 + 20;
+    int roofGreen = rand() % 50 + 20;
+    int roofRed = rand() % 50 + 20;
+    plasma::Vector<3, unsigned char> roofColor(roofRed, roofGreen, roofBlue);
     int brightness = rand() % 50;
     if (variant == Region::Record::DungeonPalace)
         brightness = rand() % 50 + 100;
-    plasma::Vector<3, unsigned char> wallColor(rand() % 50 + 50 + brightness, rand() % 50 + 50 + brightness,
-                                               rand() % 50 + 50 + brightness);
-    plasma::Vector<3, unsigned char> floorColor(rand() % 50 + 50 + brightness, rand() % 50 + 50 + brightness,
-                                                rand() % 50 + 50 + brightness);
+    int wallBlue = rand() % 50 + 50 + brightness;
+    int wallGreen = rand() % 50 + 50 + brightness;
+    int wallRed = rand() % 50 + 50 + brightness;
+    plasma::Vector<3, unsigned char> wallColor(wallRed, wallGreen, wallBlue);
+    int floorBlue = rand() % 50 + 50 + brightness;
+    int floorGreen = rand() % 50 + 50 + brightness;
+    int floorRed = rand() % 50 + 50 + brightness;
+    plasma::Vector<3, unsigned char> floorColor(floorRed, floorGreen, floorBlue);
     // The id of the category 18 items on shelves (0, or 1 in caves). Dungeon plant light palette.
     int shelfItemId = CandleItemCandle;
     // The light of the green glowing plants.
@@ -1926,13 +1941,28 @@ void World::generateDungeon(Zone *zone, Region *region, int x, int y, int varian
         // Procedural RGB palette and brightness coefficients for this surface.
         shelfItemId = CandleItemUndead;
         plantColor = plasma::Vector<3, float>(0.0f, 0.5f, 0.1f);
-        wallColor = plasma::Vector<3, unsigned char>(rand() % 20 + 50, rand() % 50 + 50, rand() % 50 + 50);
-        floorColor = plasma::Vector<3, unsigned char>(rand() % 20 + 50, rand() % 50 + 50, rand() % 50 + 50);
+        {
+            int wallBlue = rand() % 50 + 50;
+            int wallGreen = rand() % 50 + 50;
+            int wallRed = rand() % 20 + 50;
+            wallColor = plasma::Vector<3, unsigned char>(wallRed, wallGreen, wallBlue);
+            int floorBlue = rand() % 50 + 50;
+            int floorGreen = rand() % 50 + 50;
+            int floorRed = rand() % 20 + 50;
+            floorColor = plasma::Vector<3, unsigned char>(floorRed, floorGreen, floorBlue);
+        }
         roughness = 0.0015f;
         break;
-    case Region::Record::DungeonTemple:
-        wallColor = plasma::Vector<3, unsigned char>(rand() % 50 + 100, rand() % 50 + 80, rand() % 50 + 20);
-        floorColor = plasma::Vector<3, unsigned char>(rand() % 50 + 100, rand() % 50 + 80, rand() % 50 + 20);
+    case Region::Record::DungeonTemple: {
+        int wallBlue = rand() % 50 + 20;
+        int wallGreen = rand() % 50 + 80;
+        int wallRed = rand() % 50 + 100;
+        wallColor = plasma::Vector<3, unsigned char>(wallRed, wallGreen, wallBlue);
+        int floorBlue = rand() % 50 + 20;
+        int floorGreen = rand() % 50 + 80;
+        int floorRed = rand() % 50 + 100;
+        floorColor = plasma::Vector<3, unsigned char>(floorRed, floorGreen, floorBlue);
+    }
         roughness = 0.0025f;
         break;
     case Region::Record::DungeonPyramid:
@@ -2038,8 +2068,15 @@ void World::generateDungeon(Zone *zone, Region *region, int x, int y, int varian
         bestRotation = 0;
     // Random carpet and border palette.
     dungeon.m_rotation = bestRotation;
-    plasma::Vector<3, unsigned char> carpetColor(rand() % 180 + 50, rand() % 180 + 50, rand() % 180 + 50);
-    plasma::Vector<3, unsigned char> carpetBorderColor(rand() % 180 + 50, rand() % 180 + 50, rand() % 180 + 50);
+    // Both colours are drawn blue, green, red, as in the original game.
+    int carpetBlue = rand() % 180 + 50;
+    int carpetGreen = rand() % 180 + 50;
+    int carpetRed = rand() % 180 + 50;
+    plasma::Vector<3, unsigned char> carpetColor(carpetRed, carpetGreen, carpetBlue);
+    int borderBlue = rand() % 180 + 50;
+    int borderGreen = rand() % 180 + 50;
+    int borderRed = rand() % 180 + 50;
+    plasma::Vector<3, unsigned char> carpetBorderColor(borderRed, borderGreen, borderBlue);
     switch (variant) {
     case Region::Record::DungeonCastle:
     case Region::Record::DungeonPalace:
@@ -2560,9 +2597,11 @@ void World::generateDungeon(Zone *zone, Region *region, int x, int y, int varian
                                     // Ceiling and wall plant layout: cell-relative coordinates and sprite extent scaling.
                                     plant.scale = rand() * 0.04f / float(RAND_MAX) + 0.08f;
                                     // Dungeon layout: cell-relative room, corridor and entrance offsets in the ten-block grid.
+                                    // y is drawn before x, as in the original game.
+                                    int lianaY = y + cy * 10 + 2 + rand() % 5;
+                                    int lianaX = x + cx * 10 + 2 + rand() % 5;
                                     plant.position = plasma::Vector<3, Fixed>(
-                                        x + cx * 10 + 2 + rand() % 5, y + cy * 10 + 2 + rand() % 5,
-                                        (float)(bestDepth + (cz + 1) * 10) - plant.scale * 20.0f);
+                                        lianaX, lianaY, (float)(bestDepth + (cz + 1) * 10) - plant.scale * 20.0f);
                                     plant.type = PlantLiana;
                                     zone->m_plants.push_back(plant);
                                 }
@@ -3506,10 +3545,12 @@ World::RegionRecord *World::generateRegionRecord(int x, int y)
     }
     if (atSpawn)
         record->column = plasma::Vector<2, int>((int)m_spawnPoint[0], (int)m_spawnPoint[1]);
-    else // arguments are evaluated right to left: y's offset is drawn first
-        record->column =
-            plasma::Vector<2, int>(x * BlocksPerRegion + LandscapeCenterMargin + rand() % LandscapeCenterRandomRange,
-                                   y * BlocksPerRegion + rand() % LandscapeCenterRandomRange + LandscapeCenterMargin);
+    else {
+        // y's offset is drawn before x's, as in the original game.
+        int columnY = y * BlocksPerRegion + rand() % LandscapeCenterRandomRange + LandscapeCenterMargin;
+        int columnX = x * BlocksPerRegion + LandscapeCenterMargin + rand() % LandscapeCenterRandomRange;
+        record->column = plasma::Vector<2, int>(columnX, columnY);
+    }
     record->column[0] = record->column[0] / 2048 * 2048 + 1024;
     // Noise field coefficients: coordinate frequency, independent channel offsets and output
     // amplitude.
@@ -4033,9 +4074,10 @@ void World::populateRegion(int x, int y, ServerUpdates *updates)
                 record->monster.level = rand() % (maximumLevel - minimumLevel + 1) + minimumLevel;
                 record->monster.rarity = ItemRarityWhite;
                 record->monster.race = randomMonsterRace(x, y, record->monster.level);
-                record->monster.zone = plasma::Vector<2, int>(
-                    square[0] * ZonesPerSceneryRecord + 2 + rand() % MonsterTargetZoneRandomRange,
-                    square[1] * ZonesPerSceneryRecord + 2 + rand() % MonsterTargetZoneRandomRange);
+                // y is drawn before x, as in the original game.
+                int zoneY = square[1] * ZonesPerSceneryRecord + 2 + rand() % MonsterTargetZoneRandomRange;
+                int zoneX = square[0] * ZonesPerSceneryRecord + 2 + rand() % MonsterTargetZoneRandomRange;
+                record->monster.zone = plasma::Vector<2, int>(zoneX, zoneY);
                 monsterSquares.push_back(square);
             }
             if (record->kind != Region::Record::SceneryNone && record->kind != Region::Record::SceneryPortal &&
@@ -5064,8 +5106,13 @@ void World::buildTree(int x, int y, int z, int radius, int height, int kind, Zon
     float green = temperature * 50.0f + 120.0f;
     float blue = temperature * 100.0f + 50.0f;
     // The trunk's colours at its foot and at its top.
-    plasma::Vector<3, float> trunkFoot(240.0f, green + rand() % 80, blue + rand() % 50);
-    plasma::Vector<3, float> trunkTop(240.0f, green + rand() % 80, blue + rand() % 50);
+    // Tree colours are drawn red, green, blue (left to right), as in the original game.
+    int footGreen = rand() % 80;
+    int footBlue = rand() % 50;
+    plasma::Vector<3, float> trunkFoot(240.0f, green + footGreen, blue + footBlue);
+    int topGreen = rand() % 80;
+    int topBlue = rand() % 50;
+    plasma::Vector<3, float> trunkTop(240.0f, green + topGreen, blue + topBlue);
     // Trunk shape profile: palm height/radius transforms, per-kind radius overrides and minimum
     // radius.
     if (kind == 5) {
@@ -5111,26 +5158,37 @@ void World::buildTree(int x, int y, int z, int radius, int height, int kind, Zon
         // Tree trunk and leaf palette by climate/kind.
         temperature = 1.0f;
     if (greenChance > rand() / float(RAND_MAX) || kind == 4 || kind == 3) {
-        leaves = plasma::Vector<3, float>(rand() % 20, rand() % 155 + 50, rand() % 100);
+        int leafRed = rand() % 20;
+        int leafGreen = rand() % 155 + 50;
+        int leafBlue = rand() % 100;
+        leaves = plasma::Vector<3, float>(leafRed, leafGreen, leafBlue);
         leaves = clampChannels(leaves);
         float light = rand() % 100 + 50;
         leavesLight = clampChannels(leaves + plasma::Vector<3, float>(light, light, 0.0f));
     } else if (terrainHumidity(x, y, zone) > 0.5f) {
-        leaves = plasma::Vector<3, float>(rand() % 55 + 200, rand() % 100, rand() % 50);
+        int leafRed = rand() % 55 + 200;
+        int leafGreen = rand() % 100;
+        int leafBlue = rand() % 50;
+        leaves = plasma::Vector<3, float>(leafRed, leafGreen, leafBlue);
         float light = rand() % 100 + 50;
         leavesLight = clampColor(leaves + plasma::Vector<3, float>(light, light, 0.0f));
         emitLeaves = true;
     } else {
         switch (rand() % 2) {
         case 0: {
-            leaves = clampColor(plasma::Vector<3, float>(rand() % 55 + 200, 0.0f, rand() % 200));
+            int leafRed = rand() % 55 + 200;
+            int leafBlue = rand() % 200;
+            leaves = clampColor(plasma::Vector<3, float>(leafRed, 0.0f, leafBlue));
             float light = rand() % 100 + 100;
             leavesLight = clampColor(leaves + plasma::Vector<3, float>(light, light, light));
             emitLeaves = true;
             break;
         }
         case 1: {
-            leaves = clampColor(plasma::Vector<3, float>(rand() % 20, rand() % 100 + 120, rand() % 100));
+            int leafRed = rand() % 20;
+            int leafGreen = rand() % 100 + 120;
+            int leafBlue = rand() % 100;
+            leaves = clampColor(plasma::Vector<3, float>(leafRed, leafGreen, leafBlue));
             float light = rand() % 150 + 100;
             leavesLight = clampColor(leaves + plasma::Vector<3, float>(light, light, 0.0f));
             break;
@@ -5503,17 +5561,26 @@ void World::buildTree(int x, int y, int z, int radius, int height, int kind, Zon
                 if (length > 10) {
                     // Foliage on both sides of the branch, more of it further out.
                     for (int tries = 5; tries > 0; tries--) {
-                        if (rand() % 120 < length - 10)
-                            growFoliage((int)(rand() % 20 + point[0] - 10.0 + sideX * 4.0f),
-                                        (int)(rand() % 20 + point[1] - 10.0 + sideY * 4.0f),
-                                        (int)(rand() % (2 - (int)(thickness * -2.0f)) + (point[2] - 3.0)),
-                                        (float)(rand() % 4 + 4), (float)(rand() % 4 + 4), leaves, leavesLight, 6, zone);
+                        // The arguments are drawn last to first, as in the original game.
+                        if (rand() % 120 < length - 10) {
+                            float foliageHeight = (float)(rand() % 4 + 4);
+                            float foliageRadius = (float)(rand() % 4 + 4);
+                            int foliageZ = (int)(rand() % (2 - (int)(thickness * -2.0f)) + (point[2] - 3.0));
+                            int foliageY = (int)(rand() % 20 + point[1] - 10.0 + sideY * 4.0f);
+                            int foliageX = (int)(rand() % 20 + point[0] - 10.0 + sideX * 4.0f);
+                            growFoliage(foliageX, foliageY, foliageZ, foliageRadius, foliageHeight, leaves, leavesLight,
+                                        6, zone);
+                        }
                         // The other side's foliage rises twice as high: (1 - t) * 2.
-                        if (rand() % 120 < length - 10)
-                            growFoliage((int)(rand() % 20 + point[0] - 10.0 - sideX * 4.0f),
-                                        (int)(rand() % 20 + point[1] - 10.0 - sideY * 4.0f),
-                                        (int)(rand() % ((1 - (int)(thickness * -2.0f)) * 2) + (point[2] - 3.0)),
-                                        (float)(rand() % 4 + 4), (float)(rand() % 4 + 4), leaves, leavesLight, 6, zone);
+                        if (rand() % 120 < length - 10) {
+                            float foliageHeight = (float)(rand() % 4 + 4);
+                            float foliageRadius = (float)(rand() % 4 + 4);
+                            int foliageZ = (int)(rand() % ((1 - (int)(thickness * -2.0f)) * 2) + (point[2] - 3.0));
+                            int foliageY = (int)(rand() % 20 + point[1] - 10.0 - sideY * 4.0f);
+                            int foliageX = (int)(rand() % 20 + point[0] - 10.0 - sideX * 4.0f);
+                            growFoliage(foliageX, foliageY, foliageZ, foliageRadius, foliageHeight, leaves, leavesLight,
+                                        6, zone);
+                        }
                     }
                     if (emitLeaves) {
                         Zone::Plant leafEmitter;
@@ -5534,9 +5601,15 @@ void World::buildTree(int x, int y, int z, int radius, int height, int kind, Zon
         // from the rim inwards, shaded from the needle colour at the trunk to the tip colour at the rim,
         // snowy in cold columns; two needle blocks on top.
         float angle = (float)(rand() * 6.283185307179586 / double(RAND_MAX));
-        plasma::Vector<3, float> needles(
-            plasma::Vector<3, unsigned char>(rand() % 100, rand() % 50 + 100, rand() % 100));
-        plasma::Vector<3, float> tips(plasma::Vector<3, unsigned char>(rand() % 100, rand() % 50 + 100, rand() % 100));
+        // Both colours are drawn blue, green, red, as in the original game.
+        int needleBlue = rand() % 100;
+        int needleGreen = rand() % 50 + 100;
+        int needleRed = rand() % 100;
+        plasma::Vector<3, float> needles(plasma::Vector<3, unsigned char>(needleRed, needleGreen, needleBlue));
+        int tipBlue = rand() % 100;
+        int tipGreen = rand() % 50 + 100;
+        int tipRed = rand() % 100;
+        plasma::Vector<3, float> tips(plasma::Vector<3, unsigned char>(tipRed, tipGreen, tipBlue));
         // Tree shape profile: Conifer droop, disc sampling, layer angle step and crown height fraction.
         float spread = (float)radius;
         float droop = -radius * 0.3f;
