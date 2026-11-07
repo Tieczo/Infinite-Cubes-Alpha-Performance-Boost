@@ -19,6 +19,7 @@
 #include "cube/GameController.h"
 #include "cube/DefaultBlocks.h"
 #include "cube/Options.h"
+#include "cube/SpikeLog.h"
 #include "cube/XAudio2Engine.h"
 
 using namespace cube;
@@ -58,7 +59,13 @@ LRESULT CALLBACK WndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam
 {
     switch (message) {
     case WM_SIZE:
+        spikeEvent(wParam == SIZE_MINIMIZED ? "window minimized" : "window size changed");
+        spikeResetReason("size");
+        resetDevice(false);
+        break;
     case WM_SETFOCUS:
+        spikeEvent("window focus gained");
+        spikeResetReason("focus");
         resetDevice(false);
         break;
     case WM_DESTROY:
@@ -107,7 +114,9 @@ LRESULT CALLBACK WndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam
         break;
     }
     case WM_MOUSEMOVE:
+        break;
     case WM_KILLFOCUS:
+        spikeEvent("window focus lost");
         break;
     default:
         return DefWindowProcW(window, message, wParam, lParam);
@@ -129,6 +138,7 @@ void frame()
     if (g_game->m_options.resolutionX != options.resolutionX || g_game->m_options.resolutionY != options.resolutionY ||
         g_game->m_options.fullscreen != options.fullscreen || g_game->m_options.antiAliasing != options.antiAliasing) {
         options = g_game->m_options;
+        spikeResetReason("options");
         resetDevice(false);
     }
     s_lastTime = now;
@@ -191,6 +201,7 @@ bool initializeDirect3D()
 // options' antialiasing, under the game's update locks.
 void resetDevice(bool unused)
 {
+    spikeResetBegin();
     bool fullscreen = options.fullscreen != 0;
     RECT client;
     if (fullscreen) {
@@ -199,8 +210,10 @@ void resetDevice(bool unused)
     } else {
         GetClientRect(g_window, &client);
     }
-    if (client.right <= 0 || client.bottom <= 0)
+    if (client.right <= 0 || client.bottom <= 0) {
+        spikeResetDone(client.right, client.bottom);
         return;
+    }
     if (g_device) {
         if (g_engine) {
             g_engine->releaseDeviceResources();
@@ -239,6 +252,7 @@ void resetDevice(bool unused)
             g_engine->restoreDeviceResources();
     }
     g_deviceLost = false;
+    spikeResetDone(client.right, client.bottom);
 }
 
 // Opens the window and the devices, creates the game and runs the message loop until WM_QUIT.
@@ -351,6 +365,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int)
     MSG message;
     for (;;) {
         DWORD frameStart = timeGetTime();
+        spikeFrame(g_game->m_options.spikeLog != 0, g_game->m_world.m_client);
         if (PeekMessageW(&message, 0, 0, 0, PM_NOREMOVE) == TRUE) {
             if (!GetMessageW(&message, 0, 0, 0))
                 break;

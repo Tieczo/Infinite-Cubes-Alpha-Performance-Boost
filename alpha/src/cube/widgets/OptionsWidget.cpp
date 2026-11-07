@@ -249,6 +249,14 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextThreadedRendering->setTransformation(rightButton->m_transformation->clone());
     m_nextThreadedRendering->setDisplay(rightButton->m_display->clone());
     m_nextThreadedRendering->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::ThreadedRenderingToggle, true);
+    m_previousSpikeLog = leftButton->instance(node);
+    m_previousSpikeLog->setTransformation(leftButton->m_transformation->clone());
+    m_previousSpikeLog->setDisplay(leftButton->m_display->clone());
+    m_previousSpikeLog->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::SpikeLogToggle, true);
+    m_nextSpikeLog = rightButton->instance(node);
+    m_nextSpikeLog->setTransformation(rightButton->m_transformation->clone());
+    m_nextSpikeLog->setDisplay(rightButton->m_display->clone());
+    m_nextSpikeLog->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::SpikeLogToggle, true);
     m_previousPage = leftButton->instance(node);
     m_previousPage->setTransformation(leftButton->m_transformation->clone());
     m_previousPage->setDisplay(leftButton->m_display->clone());
@@ -728,11 +736,13 @@ void OptionsWidget::drawPerformancePage()
     drawRow(L"Fast Terrain Loading", m_options.fastTerrainLoading ? L"Yes" : L"No", 87.0f);
     drawRow(L"Fast Plant Scan", m_options.fastPlantScan ? L"Yes" : L"No", 117.0f);
     drawRow(L"Threaded Rendering", m_options.threadedRendering ? L"Yes" : L"No", 147.0f);
+    drawRow(L"Spike Log", m_options.spikeLog ? L"Yes" : L"No", 177.0f);
     colorArrows(m_previousPage, m_nextPage);
     colorArrows(m_previousFastCreatureUpdates, m_nextFastCreatureUpdates);
     colorArrows(m_previousFastTerrainLoading, m_nextFastTerrainLoading);
     colorArrows(m_previousFastPlantScan, m_nextFastPlantScan);
     colorArrows(m_previousThreadedRendering, m_nextThreadedRendering);
+    colorArrows(m_previousSpikeLog, m_nextSpikeLog);
 }
 
 void OptionsWidget::showPage()
@@ -750,7 +760,8 @@ void OptionsWidget::showPage()
     plasma::Node *performance[] = {m_previousFastCreatureUpdates, m_nextFastCreatureUpdates,
                                    m_previousFastTerrainLoading,  m_nextFastTerrainLoading,
                                    m_previousFastPlantScan,       m_nextFastPlantScan,
-                                   m_previousThreadedRendering,   m_nextThreadedRendering};
+                                   m_previousThreadedRendering,   m_nextThreadedRendering,
+                                   m_previousSpikeLog,            m_nextSpikeLog};
     for (plasma::Node *button : general)
         button->setVisible(m_page == 0);
     for (plasma::Node *button : performance)
@@ -876,6 +887,11 @@ void OptionsWidget::FastPlantScanToggle()
 void OptionsWidget::ThreadedRenderingToggle()
 {
     m_options.threadedRendering = !m_options.threadedRendering;
+}
+
+void OptionsWidget::SpikeLogToggle()
+{
+    m_options.spikeLog = !m_options.spikeLog;
 }
 
 void OptionsWidget::PageToggle()
@@ -1005,8 +1021,9 @@ void OptionsWidget::resized()
                                    {m_previousFastCreatureUpdates, m_nextFastCreatureUpdates},
                                    {m_previousFastTerrainLoading, m_nextFastTerrainLoading},
                                    {m_previousFastPlantScan, m_nextFastPlantScan},
-                                   {m_previousThreadedRendering, m_nextThreadedRendering}};
-    for (int i = 0; i < 5; i++) {
+                                   {m_previousThreadedRendering, m_nextThreadedRendering},
+                                   {m_previousSpikeLog, m_nextSpikeLog}};
+    for (int i = 0; i < 6; i++) {
         float y = m_page == 1 ? 12.0f + i * 30.0f : 432.0f;
         pageRows[i][0]->m_widget->moveTo(240.0f, y, true);
         button = pageRows[i][1]->m_widget;

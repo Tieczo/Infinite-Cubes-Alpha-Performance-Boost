@@ -157,6 +157,7 @@ add_executable(Cube WIN32
  src/cube/SpawnLocationBehavior.cpp
  src/cube/Speech.cpp
  src/cube/widgets/SpeechWidget.cpp
+ src/cube/SpikeLog.cpp
  src/cube/Sprite.cpp
  src/cube/SpriteManager.cpp
  src/cube/widgets/SpriteWidget.cpp
@@ -246,6 +247,7 @@ add_executable(Server
  src/cube/Server.cpp
  src/cube/SpawnLocationBehavior.cpp
  src/cube/Speech.cpp
+ src/cube/SpikeLog.cpp
  src/cube/Sprite.cpp
  src/cube/SpriteManager.cpp
  src/cube/WalkPathBehavior.cpp

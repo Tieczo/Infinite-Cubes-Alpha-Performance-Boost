@@ -2,6 +2,7 @@
 // World generation builds regions, terrain, dungeons, buildings, plants and creature spawns.
 #include "cube/Dungeon.h"
 #include "cube/Region.h"
+#include "cube/SpikeLog.h"
 #include "cube/WorldBlocks.h"
 #include "cube/Item.h"
 #include "cube/WorldGeneration.h"
@@ -5845,6 +5846,7 @@ enum {
 // the saved state.
 void World::generateZone(int x, int y)
 {
+    spikeMark(SpikeZoneGenerations);
     if (x < 0 || y < 0 || x >= ZonesPerWorld || y >= ZonesPerWorld)
         return;
     int regionX = x / ZonesPerRegion;

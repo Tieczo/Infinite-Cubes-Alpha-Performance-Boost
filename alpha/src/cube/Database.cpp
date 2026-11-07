@@ -1,5 +1,6 @@
 // Database wraps SQLite storage and compressed, scrambled binary values.
 #include "cube/Database.h"
+#include "cube/SpikeLog.h"
 
 #include <iostream>
 #include <string.h>
@@ -156,6 +157,7 @@ bool Database::open(const std::string &path)
 
 bool Database::read(const std::string &key, unsigned char *&data, int &size)
 {
+    spikeMark(SpikeDatabaseReads);
     data = nullptr;
     size = 0;
     sqlite3_stmt *statement;
@@ -220,6 +222,7 @@ bool Database::write(const std::string &key, BytesIO &value)
 
 bool Database::write(const std::string &key, const char *data, int size)
 {
+    spikeMark(SpikeDatabaseWrites);
     sqlite3_stmt *statement;
     if (sqlite3_prepare(m_db, "SELECT 1 FROM blobs WHERE key = ?", -1, &statement, nullptr) != SQLITE_OK) {
         return false;

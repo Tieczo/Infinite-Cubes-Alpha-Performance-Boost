@@ -2,6 +2,7 @@
 // Per-tick world simulation moves creatures and projectiles and handles collisions with terrain and zone objects.
 #include "cube/WorldBlocks.h"
 #include "cube/Animation.h"
+#include "cube/SpikeLog.h"
 #include "cube/Noise.h"
 #include "cube/BuffPacket.h"
 #include "cube/BytesIO.h"
@@ -1228,6 +1229,7 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                     }
                 }
                 Creature *creature = new Creature(spawn->creatureId);
+                spikeMark(SpikeSpawns);
                 m_creatures[spawn->creatureId] = creature;
                 creature->m_entityData.position = spawn->position;
                 creature->m_entityData.rotation[2] = spawn->rotation;

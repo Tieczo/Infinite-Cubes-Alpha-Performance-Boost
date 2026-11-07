@@ -20,6 +20,7 @@
 #include "cube/ServerUpdates.h"
 #include "cube/SoundIds.h"
 #include "cube/Spawn.h"
+#include "cube/SpikeLog.h"
 #include "cube/Sprite.h"
 #include "cube/StatCurves.h"
 
@@ -885,6 +886,7 @@ void World::applyHit(const HitPacket &hit, ServerUpdates *updates, std::set<Zone
                 ++index;
             }
         }
+        spikeMark(SpikeDeaths);
         dropLoot(target, changedZones);
         for (std::map<long long, Creature *>::iterator it = m_creatures.begin(); it != m_creatures.end(); ++it) {
             if (it->second && it->second->m_entityData.hostilityType == HostilityPlayer) {
@@ -2068,6 +2070,7 @@ void World::dropLoot(Creature *creature, std::set<Zone *> *changedZones)
         (creature->m_entityData.appearance.appearanceFlags & (1 << AppearanceFlagSummoned)))
         return;
     rand(); // drawn and discarded
+    spikeMark(SpikeLootDrops);
 
     std::vector<Item *> worn;
     if (creature->m_entityData.equipment.weaponLeft.category != ItemCategoryNone)
@@ -2417,12 +2420,12 @@ void World::fillSphere(int x, int y, int z, float radius, const Block &block, Zo
 
 void World::enterRegions()
 {
-    EnterCriticalSection(&m_regionLock);
+    spikeEnter(&m_regionLock, SpikeWaitRegionLock);
 }
 
 void World::enterZones()
 {
-    EnterCriticalSection(&m_zoneLock);
+    spikeEnter(&m_zoneLock, SpikeWaitZoneLock);
 }
 
 void World::leaveRegions()
@@ -3581,6 +3584,7 @@ void World::removeRegion(int x, int y)
 
 void World::removeZone(int x, int y)
 {
+    spikeMark(SpikeZoneRemovals);
     Region *region = getRegion(x / ZonesPerRegion, y / ZonesPerRegion);
     if (!region)
         return;
@@ -3627,6 +3631,7 @@ void World::resetCreatures()
 // their coordinates (eight per region).
 void World::saveRegion(int x, int y)
 {
+    spikeMark(SpikeRegionSaves);
     if (m_client || m_name.empty())
         return;
     Region *region = getRegion(x, y);
@@ -3651,6 +3656,7 @@ void World::saveRegion(int x, int y)
 
 void World::saveZone(Zone *zone)
 {
+    spikeMark(SpikeZoneSaves);
     if (m_name.empty() || !zone)
         return;
     if (!zone->m_modified && zone->m_blockChanges.empty())

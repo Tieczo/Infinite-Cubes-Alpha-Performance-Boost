@@ -1,6 +1,7 @@
 #include "cube/WorldDimensions.h"
 // GameController manages the game client, rendering chunks and saved-world previews.
 #include "cube/GameController.h"
+#include "cube/SpikeLog.h"
 #include "cube/WorldBlocks.h"
 #include <fstream>
 #include <iostream>
@@ -2115,9 +2116,9 @@ void GameController::applyOptions(const Options &options)
 
 void GameController::beginUpdate()
 {
-    EnterCriticalSection(&m_chunkUpdateLock);
-    EnterCriticalSection(&m_mapUpdateLock);
-    EnterCriticalSection(&m_updateLock2);
+    spikeEnter(&m_chunkUpdateLock, SpikeWaitChunkLock);
+    spikeEnter(&m_mapUpdateLock, SpikeWaitMapLock);
+    spikeEnter(&m_updateLock2, SpikeWaitUpdateLock);
 }
 
 bool GameController::canMesh(int x, int y)
