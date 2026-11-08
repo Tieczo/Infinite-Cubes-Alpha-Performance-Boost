@@ -23,17 +23,34 @@ enum {
     UpdateDelay = 20
 };
 
-// The creature distance (not in the original): server.cfg may hold "creatureDistance N" after the seed, N from
-// 100 to 400 percent; missing or invalid is 100, as in the original. Read again once a second.
-int readCreatureDistance()
+// The settings after the seed in server.cfg (not in the original), one "key value" per line in any order; a missing,
+// unknown or invalid line keeps the original's value, so a server.cfg with only the seed works as before. Read again
+// once a second.
+//   creatureDistance N       100 to 400 percent, default 100
+//   guardianReliableBlock N  1: blocked hits cost a guardian warrior no block power, default 0
+struct ServerSettings {
+    int creatureDistance = 100;
+    bool guardianReliableBlock = false;
+};
+
+ServerSettings readSettings()
 {
+    ServerSettings settings;
     std::ifstream config("server.cfg");
-    int seed;
-    std::string key;
-    int value;
-    if (config >> seed >> key >> value && key == "creatureDistance" && value >= 100 && value <= 400)
-        return value;
-    return 100;
+    std::string line;
+    std::getline(config, line); // the seed
+    while (std::getline(config, line)) {
+        std::istringstream fields(line);
+        std::string key;
+        int value;
+        if (!(fields >> key >> value))
+            continue;
+        if (key == "creatureDistance" && value >= 100 && value <= 400)
+            settings.creatureDistance = value;
+        else if (key == "guardianReliableBlock" && (value == 0 || value == 1))
+            settings.guardianReliableBlock = value != 0;
+    }
+    return settings;
 }
 
 // The squared zone distance below which zones are generated and kept around a player: 9 as in the original,
@@ -70,10 +87,13 @@ int main()
 
     Server *server = new Server(world);
 
-    int creatureDistance = readCreatureDistance();
+    ServerSettings settings = readSettings();
+    int creatureDistance = settings.creatureDistance;
     world->m_creatureDistanceScale = creatureDistance / 100.0f;
+    world->m_guardianReliableBlock = settings.guardianReliableBlock;
     std::atomic<int> zoneDistance(zoneDistanceFor(creatureDistance));
     std::cout << "creature distance " << creatureDistance << "%" << std::endl;
+    std::cout << "guardian reliable block " << (settings.guardianReliableBlock ? "on" : "off") << std::endl;
 
     // The zones the players are in, collected by the update loop for the generation thread.
     CRITICAL_SECTION playerZonesLock;
@@ -217,21 +237,26 @@ int main()
 
     while (running) {
         int now = gameTime();
-        int newCreatureDistance = creatureDistance;
+        ServerSettings newSettings = settings;
         if (now - lastConfigRead >= 1000) {
             lastConfigRead = now;
-            newCreatureDistance = readCreatureDistance();
+            newSettings = readSettings();
         }
         ServerUpdates incoming;
         server->takeHits(incoming.hits);
         server->takeBuffs(incoming.buffs);
         world->enterRegions();
-        if (newCreatureDistance != creatureDistance) {
-            creatureDistance = newCreatureDistance;
+        if (newSettings.guardianReliableBlock != settings.guardianReliableBlock) {
+            world->m_guardianReliableBlock = newSettings.guardianReliableBlock;
+            std::cout << "guardian reliable block " << (newSettings.guardianReliableBlock ? "on" : "off") << std::endl;
+        }
+        if (newSettings.creatureDistance != creatureDistance) {
+            creatureDistance = newSettings.creatureDistance;
             world->m_creatureDistanceScale = creatureDistance / 100.0f;
             zoneDistance = zoneDistanceFor(creatureDistance);
             std::cout << "creature distance " << creatureDistance << "%" << std::endl;
         }
+        settings = newSettings;
         ServerUpdates outgoing;
         world->update(now - lastTime, &outgoing, &incoming);
         lastTime = now;
