@@ -475,6 +475,8 @@ public:
     int maxCombo();
     int attackDuration();
     bool isBlocking();
+    // A warrior of the guardian specialization (not in the original).
+    bool isGuardian();
     // Attack starters and boss predicate, observed by CombatBehavior::Update. performAttack and
     // performSpecialAttack are
     bool performAttack();

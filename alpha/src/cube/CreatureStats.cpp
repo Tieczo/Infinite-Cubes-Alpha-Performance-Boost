@@ -2749,6 +2749,11 @@ bool Creature::isAttackingFromRange()
     return false;
 }
 
+bool Creature::isGuardian()
+{
+    return m_entityData.classType == ClassWarrior && m_entityData.specialization == SpecializationGuardian;
+}
+
 bool Creature::isBlocking()
 {
     if (m_entityData.actionLockTime > 0)

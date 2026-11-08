@@ -257,6 +257,16 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextSpikeLog->setTransformation(rightButton->m_transformation->clone());
     m_nextSpikeLog->setDisplay(rightButton->m_display->clone());
     m_nextSpikeLog->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::SpikeLogToggle, true);
+    m_previousGuardianReliableBlock = leftButton->instance(node);
+    m_previousGuardianReliableBlock->setTransformation(leftButton->m_transformation->clone());
+    m_previousGuardianReliableBlock->setDisplay(leftButton->m_display->clone());
+    m_previousGuardianReliableBlock->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                                   &OptionsWidget::GuardianReliableBlockToggle, true);
+    m_nextGuardianReliableBlock = rightButton->instance(node);
+    m_nextGuardianReliableBlock->setTransformation(rightButton->m_transformation->clone());
+    m_nextGuardianReliableBlock->setDisplay(rightButton->m_display->clone());
+    m_nextGuardianReliableBlock->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
+                                               &OptionsWidget::GuardianReliableBlockToggle, true);
     m_previousPage = leftButton->instance(node);
     m_previousPage->setTransformation(leftButton->m_transformation->clone());
     m_previousPage->setDisplay(leftButton->m_display->clone());
@@ -737,12 +747,14 @@ void OptionsWidget::drawPerformancePage()
     drawRow(L"Fast Plant Scan", m_options.fastPlantScan ? L"Yes" : L"No", 117.0f);
     drawRow(L"Threaded Rendering", m_options.threadedRendering ? L"Yes" : L"No", 147.0f);
     drawRow(L"Spike Log", m_options.spikeLog ? L"Yes" : L"No", 177.0f);
+    drawRow(L"Guardian Reliable Block", m_options.guardianReliableBlock ? L"Yes" : L"No", 207.0f);
     colorArrows(m_previousPage, m_nextPage);
     colorArrows(m_previousFastCreatureUpdates, m_nextFastCreatureUpdates);
     colorArrows(m_previousFastTerrainLoading, m_nextFastTerrainLoading);
     colorArrows(m_previousFastPlantScan, m_nextFastPlantScan);
     colorArrows(m_previousThreadedRendering, m_nextThreadedRendering);
     colorArrows(m_previousSpikeLog, m_nextSpikeLog);
+    colorArrows(m_previousGuardianReliableBlock, m_nextGuardianReliableBlock);
 }
 
 void OptionsWidget::showPage()
@@ -761,7 +773,8 @@ void OptionsWidget::showPage()
                                    m_previousFastTerrainLoading,  m_nextFastTerrainLoading,
                                    m_previousFastPlantScan,       m_nextFastPlantScan,
                                    m_previousThreadedRendering,   m_nextThreadedRendering,
-                                   m_previousSpikeLog,            m_nextSpikeLog};
+                                   m_previousSpikeLog,            m_nextSpikeLog,
+                                   m_previousGuardianReliableBlock, m_nextGuardianReliableBlock};
     for (plasma::Node *button : general)
         button->setVisible(m_page == 0);
     for (plasma::Node *button : performance)
@@ -894,6 +907,11 @@ void OptionsWidget::SpikeLogToggle()
     m_options.spikeLog = !m_options.spikeLog;
 }
 
+void OptionsWidget::GuardianReliableBlockToggle()
+{
+    m_options.guardianReliableBlock = !m_options.guardianReliableBlock;
+}
+
 void OptionsWidget::PageToggle()
 {
     m_page = 1 - m_page;
@@ -1022,8 +1040,9 @@ void OptionsWidget::resized()
                                    {m_previousFastTerrainLoading, m_nextFastTerrainLoading},
                                    {m_previousFastPlantScan, m_nextFastPlantScan},
                                    {m_previousThreadedRendering, m_nextThreadedRendering},
-                                   {m_previousSpikeLog, m_nextSpikeLog}};
-    for (int i = 0; i < 6; i++) {
+                                   {m_previousSpikeLog, m_nextSpikeLog},
+                                   {m_previousGuardianReliableBlock, m_nextGuardianReliableBlock}};
+    for (int i = 0; i < 7; i++) {
         float y = m_page == 1 ? 12.0f + i * 30.0f : 432.0f;
         pageRows[i][0]->m_widget->moveTo(240.0f, y, true);
         button = pageRows[i][1]->m_widget;
