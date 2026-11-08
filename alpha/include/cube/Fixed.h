@@ -133,4 +133,17 @@ enum {
     FixedIntegerUnitsPerBlock = 65536
 };
 
+// Whether the squared length of an offset can be taken without overflow (not in the original). From 16384
+// blocks on an axis the raw products can pass 2^63 and wrap, so the original's reach tests come out true at
+// random for creatures far away (ghost hits from traps and blasts on a server). Such an offset is beyond
+// every reach; for shorter ones the tests give what they always did.
+template<unsigned N> inline bool isShortOffset(const plasma::Vector<N, Fixed> &offset)
+{
+    for (unsigned i = 0; i < N; i++) {
+        if (offset[i].raw >= (1LL << 30) || offset[i].raw <= -(1LL << 30))
+            return false;
+    }
+    return true;
+}
+
 }
