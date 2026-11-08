@@ -1,4 +1,5 @@
 #include "cube/WorldDimensions.h"
+#include "cube/GameTime.h"
 // The dedicated server initializes Winsock, the world and the socket server, then runs fixed-paced updates until q is entered. A worker generates nearby zones and unloads unused ones.
 #include "cube/Server.h"
 #include "cube/DefaultBlocks.h"
@@ -52,7 +53,7 @@ int main()
     std::list<plasma::Vector<2, int>> playerZones;
     bool generating = true;
     HANDLE generationThread = StartThread([world, server, &generating, &playerZonesLock, &playerZones]() {
-        int lastCleanup = timeGetTime();
+        int lastCleanup = gameTime();
         while (generating) {
             EnterCriticalSection(&playerZonesLock);
             std::list<plasma::Vector<2, int>> zones(playerZones);
@@ -115,7 +116,7 @@ int main()
                 world->generateZone(best[0], best[1]);
 
             // Once a second, unload the zones, regions and records that no player is near.
-            int now = timeGetTime();
+            int now = gameTime();
             if (now - lastCleanup > 1000) {
                 lastCleanup = now;
                 for (int x = 0; x < 0x400; x++) {
@@ -169,7 +170,7 @@ int main()
     server->start();
 
     timeBeginPeriod(1);
-    int lastTime = timeGetTime();
+    int lastTime = gameTime();
     bool running = true;
     StartThread([&running]() {
         char key;
@@ -182,7 +183,7 @@ int main()
     });
 
     while (running) {
-        int now = timeGetTime();
+        int now = gameTime();
         ServerUpdates incoming;
         server->takeHits(incoming.hits);
         server->takeBuffs(incoming.buffs);
