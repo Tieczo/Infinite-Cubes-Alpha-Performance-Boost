@@ -177,9 +177,11 @@ static bool handleEvent(const SDL_Event &event)
         spikeResetReason("focus");
         resetDevice(false);
         break;
-    // Only for the spike log.
     case SDL_EVENT_WINDOW_FOCUS_LOST:
         spikeEvent("window focus lost");
+        // The zoom key's release goes to another window.
+        if (g_game)
+            g_game->m_keys[g_game->m_options.zoomKey & 0xff] = false;
         break;
     case SDL_EVENT_WINDOW_MINIMIZED:
         spikeEvent("window minimized");
