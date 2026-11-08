@@ -45,6 +45,12 @@ Copy the data from your own installation next to the executables:
 
 Then create an empty `Save/` directory. `Server.exe` listens on TCP port 12345 and stops on `q`.
 
+The server's creature distance (not in the original) is a second line in its `server.cfg`, after the seed:
+`creatureDistance 400` lets creatures come to life, stay and be sent to the players up to 4 times as far, as the
+Creature Distance option does in single player (100 to 400; missing or invalid is 100, as in the original). The
+server reads the file once a second, so a change applies while it runs, and prints the value it uses. Original
+clients can connect as before; at 400 each one receives about 16 times as much creature data.
+
 The game runs on Windows 7 and later. Like the original, its sound uses XAudio2 2.7 from the
 [DirectX End-User Runtime](https://www.microsoft.com/en-us/download/details.aspx?id=8109) (June 2010), which
 Windows does not include: without it, the game reports that XAudio2 could not be initialized and exits.

@@ -535,8 +535,10 @@ void Server::start()
                     std::vector<Zone::AirshipState> objects;
                     world->enterRegions();
 
-                    // Other players anywhere, other creatures within 200 blocks. After the first half second one
-                    // creature the player has not seen yet is added per tick.
+                    // Other players anywhere, other creatures within 200 blocks (times the creature distance, not in
+                    // the original). After the first half second one creature the player has not seen yet is added
+                    // per tick.
+                    float sendDistance = 200.0f * world->m_creatureDistanceScale;
                     bool mayAdd = false;
                     if (gameTime() - startTime > 500)
                         mayAdd = true;
@@ -548,7 +550,7 @@ void Server::start()
                             Creature *player = world->creatureByID(creatureId);
                             plasma::Vector<3, float> offset(it->second->m_entityData.position -
                                                             player->m_entityData.position);
-                            if (offset.squaredLength() > 40000.0f)
+                            if (offset.squaredLength() > sendDistance * sendDistance)
                                 continue;
                         }
                         if (sent.find(it->second->m_id) == sent.end()) {

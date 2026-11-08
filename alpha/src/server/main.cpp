@@ -7,6 +7,7 @@
 #include "cube/Creature.h"
 #include "cube/CreatureIds.h"
 #include "Thread.h"
+#include <atomic>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -21,6 +22,29 @@ enum {
 enum {
     UpdateDelay = 20
 };
+
+// The creature distance (not in the original): server.cfg may hold "creatureDistance N" after the seed, N from
+// 100 to 400 percent; missing or invalid is 100, as in the original. Read again once a second.
+int readCreatureDistance()
+{
+    std::ifstream config("server.cfg");
+    int seed;
+    std::string key;
+    int value;
+    if (config >> seed >> key >> value && key == "creatureDistance" && value >= 100 && value <= 400)
+        return value;
+    return 100;
+}
+
+// The squared zone distance below which zones are generated and kept around a player: 9 as in the original,
+// more with a larger creature distance so that the farther spawns have their zones.
+int zoneDistanceFor(int creatureDistance)
+{
+    int radius = 3;
+    if (creatureDistance > 100)
+        radius += (150 * (creatureDistance - 100) + 100 * BlocksPerZone - 1) / (100 * BlocksPerZone);
+    return radius * radius;
+}
 }
 
 int main()
@@ -46,13 +70,19 @@ int main()
 
     Server *server = new Server(world);
 
+    int creatureDistance = readCreatureDistance();
+    world->m_creatureDistanceScale = creatureDistance / 100.0f;
+    std::atomic<int> zoneDistance(zoneDistanceFor(creatureDistance));
+    std::cout << "creature distance " << creatureDistance << "%" << std::endl;
+
     // The zones the players are in, collected by the update loop for the generation thread.
     CRITICAL_SECTION playerZonesLock;
     InitializeCriticalSectionAndSpinCount(&playerZonesLock,
                                           0x80000400); // 1024 spins; the high bit preallocates the event
     std::list<plasma::Vector<2, int>> playerZones;
     bool generating = true;
-    HANDLE generationThread = StartThread([world, server, &generating, &playerZonesLock, &playerZones]() {
+    HANDLE generationThread = StartThread([world, server, &generating, &playerZonesLock, &playerZones,
+                                           &zoneDistance]() {
         int lastCleanup = gameTime();
         while (generating) {
             EnterCriticalSection(&playerZonesLock);
@@ -83,9 +113,11 @@ int main()
             }
             LeaveCriticalSection(&playerZonesLock);
 
-            // Generate the missing zone nearest to a player (squared distance below 9 zones).
+            // Generate the missing zone nearest to a player (squared distance below 9 zones, more with a larger
+            // creature distance).
+            int keepDistance = zoneDistance.load();
             bool found = false;
-            int bestDistance = 9;
+            int bestDistance = keepDistance;
             plasma::Vector<2, int> best;
             for (std::list<plasma::Vector<2, int>>::iterator it = zones.begin(); it != zones.end(); ++it) {
                 plasma::Vector<2, int> center = *it;
@@ -133,7 +165,7 @@ int main()
                                 for (std::list<plasma::Vector<2, int>>::iterator it = zones.begin(); it != zones.end();
                                      ++it) {
                                     plasma::Vector<2, int> offset = zone->m_position - *it;
-                                    if (offset.squaredLength() < 9) {
+                                    if (offset.squaredLength() < keepDistance) {
                                         used = true;
                                         break;
                                     }
@@ -171,6 +203,7 @@ int main()
 
     timeBeginPeriod(1);
     int lastTime = gameTime();
+    int lastConfigRead = lastTime;
     bool running = true;
     StartThread([&running]() {
         char key;
@@ -184,10 +217,21 @@ int main()
 
     while (running) {
         int now = gameTime();
+        int newCreatureDistance = creatureDistance;
+        if (now - lastConfigRead >= 1000) {
+            lastConfigRead = now;
+            newCreatureDistance = readCreatureDistance();
+        }
         ServerUpdates incoming;
         server->takeHits(incoming.hits);
         server->takeBuffs(incoming.buffs);
         world->enterRegions();
+        if (newCreatureDistance != creatureDistance) {
+            creatureDistance = newCreatureDistance;
+            world->m_creatureDistanceScale = creatureDistance / 100.0f;
+            zoneDistance = zoneDistanceFor(creatureDistance);
+            std::cout << "creature distance " << creatureDistance << "%" << std::endl;
+        }
         ServerUpdates outgoing;
         world->update(now - lastTime, &outgoing, &incoming);
         lastTime = now;
