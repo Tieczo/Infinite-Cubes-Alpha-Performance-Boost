@@ -3439,8 +3439,7 @@ void World::populateZone(Zone *zone, int days)
     sequence->m_behaviors.push_back(walk);
     sequence->m_behaviors.push_back(new RandomWalkBehavior);
     leader->m_behavior = sequence;
-    leader->creatureId =
-        ((long long)zone->m_position[1] * 65536 + zone->m_position[0]) * 256 + (int)zone->m_spawns.size();
+    leader->creatureId = generationKey(zone->m_position[0], zone->m_position[1], (int)zone->m_spawns.size());
     int potions = rand() % 2;
     Item potion;
     potion.level = (short)leader->level;
@@ -3476,10 +3475,7 @@ void World::populateZone(Zone *zone, int days)
     }
 
     for (int i = zone->m_baseSpawnCount; i < (int)zone->m_spawns.size(); i++) {
-        zone->m_spawns[i]->creatureId =
-            ((long long)zone->m_position[1] * GeneratedCreatureZoneRadix + zone->m_position[0]) *
-                GeneratedCreatureIndexRadix +
-            i;
+        zone->m_spawns[i]->creatureId = generationKey(zone->m_position[0], zone->m_position[1], i);
         fillAppearance(zone->m_spawns[i]->race, zone->m_spawns[i]->appearance, 0);
         equip(zone->m_spawns[i], false);
     }
@@ -3948,9 +3944,7 @@ void World::refreshZonePopulation(Zone *zone)
         monster->m_behavior = behavior;
         fillAppearance(monster->race, monster->appearance, 0);
         equip(monster, false);
-        monster->creatureId = ((long long)zone->m_position[1] * GeneratedCreatureZoneRadix + zone->m_position[0]) *
-                                  GeneratedCreatureIndexRadix +
-                              (int)zone->m_spawns.size();
+        monster->creatureId = generationKey(zone->m_position[0], zone->m_position[1], (int)zone->m_spawns.size());
         zone->m_spawns.push_back(monster);
     } else {
         populateZone(zone, 0);
