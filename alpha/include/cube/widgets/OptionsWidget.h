@@ -39,6 +39,7 @@ public:
     void FastPlantScanToggle();
     void ThreadedRenderingToggle();
     void SpikeLogToggle();
+    void GuardianReliableBlockToggle();
     // Switches between the general settings and the performance page (not in the original), which holds the
     // switches of the optimisations: Fast Creature Updates, Fast Terrain Loading, Fast Plant Scan and Threaded
     // Rendering.
@@ -89,6 +90,8 @@ public:
     plasma::Node *m_nextThreadedRendering;
     plasma::Node *m_previousSpikeLog;
     plasma::Node *m_nextSpikeLog;
+    plasma::Node *m_previousGuardianReliableBlock;
+    plasma::Node *m_nextGuardianReliableBlock;
     plasma::Node *m_previousPage;
     plasma::Node *m_nextPage;
     plasma::Node *m_previousMinTimeStep;

@@ -48,7 +48,8 @@ Options::Options()
       fastTerrainLoading(1),
       fastPlantScan(1),
       threadedRendering(0),
-      spikeLog(0)
+      spikeLog(0),
+      guardianReliableBlock(0)
 {}
 
 void Options::load()
@@ -101,6 +102,8 @@ void Options::load()
             file >> threadedRendering;
         if (key == "spikeLog")
             file >> spikeLog;
+        if (key == "guardianReliableBlock")
+            file >> guardianReliableBlock;
     }
     if (creatureDistance > MaximumCreatureDistance)
         creatureDistance = MaximumCreatureDistance;
@@ -129,6 +132,7 @@ void Options::save()
     file << "fastPlantScan " << fastPlantScan << std::endl;
     file << "threadedRendering " << threadedRendering << std::endl;
     file << "spikeLog " << spikeLog << std::endl;
+    file << "guardianReliableBlock " << guardianReliableBlock << std::endl;
 }
 
 }

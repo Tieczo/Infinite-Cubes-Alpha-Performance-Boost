@@ -31,5 +31,6 @@ struct Options {
     int fastPlantScan;       // render visits only the lamps and calling plants of a chunk (not in the original)
     int threadedRendering;   // a drawing thread makes the frame's device calls (not in the original)
     int spikeLog;            // spikes.log: long frames and what happened in them (SpikeLog.h; not in the original)
+    int guardianReliableBlock; // World::m_guardianReliableBlock (not in the original)
 };
 }

@@ -40,6 +40,7 @@ World::World(IDirect3DDevice9 *device, bool client)
       m_companionXpSeen(-1),
       m_creatureDistanceScale(1.0f),
       m_fastCreatureUpdates(false),
+      m_guardianReliableBlock(false),
       m_creatureCellCount(0),
       m_creatureCellExtent(0.0f),
       m_clock(0),
@@ -1143,7 +1144,9 @@ bool World::attackCreature(Creature *target, Creature *attacker, float damage, b
             hit.critical = 0;
             hit.stunTime = 0;
             hit.direction = direction * 0.5f;
-            target->m_entityData.blockPower -= cost;
+            if (!(m_guardianReliableBlock && target->m_entityData.hostilityType == HostilityPlayer &&
+                  target->isGuardian()))
+                target->m_entityData.blockPower -= cost;
             if (target->m_entityData.blockPower < -1.0f)
                 target->m_entityData.blockPower = -1.0f;
             updates->hits.push_back(hit);

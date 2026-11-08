@@ -6055,6 +6055,7 @@ void GameController::update(int milliseconds)
     // The creature distance option reaches the world's spawning and despawning.
     m_world.m_creatureDistanceScale = m_options.creatureDistance / 100.0f;
     m_world.m_fastCreatureUpdates = m_options.fastCreatureUpdates != 0;
+    m_world.m_guardianReliableBlock = m_options.guardianReliableBlock != 0;
     // A lost connection ends the session. The start menu's panel moves between the title screen and
     // the game screen.
     if (m_connected && !m_socket)
@@ -7367,7 +7368,8 @@ void GameController::update(int milliseconds)
                 m_player->m_entityData.mp = 1.0f;
             if (m_player->m_entityData.charge > m_player->m_entityData.mp)
                 m_player->m_entityData.charge = m_player->m_entityData.mp;
-            m_player->m_entityData.blockPower -= absorbed;
+            if (!(m_world.m_guardianReliableBlock && m_player->isGuardian()))
+                m_player->m_entityData.blockPower -= absorbed;
             if (m_player->m_entityData.blockPower < -1.0f)
                 m_player->m_entityData.blockPower = -1.0f;
         } else if (it->hitType == HitTypeMana) {

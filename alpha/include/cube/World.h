@@ -572,6 +572,10 @@ public:
     // looking for targets go through the creatures in the cells around a creature instead of all of
     // them (the same creatures in the same order, minus those too far away to matter).
     bool m_fastCreatureUpdates;
+    // The Guardian Reliable Block option (not in the original): a player who is a warrior of the guardian
+    // specialization blocks every hit while blocking with block power left; blocked hits cost no block power, which
+    // then only runs down with the time held.
+    bool m_guardianReliableBlock;
     // Sorts the creatures into cells of CreatureCellSize blocks (at the start of the creatures' steps).
     void buildCreatureCells();
     // The creatures in the cells within range of (x, y), sorted by id like m_creatures; false when the
