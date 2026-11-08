@@ -1,8 +1,13 @@
-// Reads and writes options.cfg for the client.
+// Reads and writes the client's options. This build keeps them in its own file, options-InfiniteCubes.cfg, so that the
+// original game's options.cfg is never changed (the original reads the render distance without a limit and drops the
+// options it does not know). Until the own file exists, the original's options.cfg is read once instead.
 #include "cube/Options.h"
 #include <fstream>
 #include <string>
 namespace cube {
+namespace {
+const char *const OptionsFileName = "options-InfiniteCubes.cfg";
+}
 // The settings' defaults (anonymous: this file's own): the render distance, the volumes and the
 // camera's speed and smoothness in percent, the frame's minimum time in milliseconds.
 namespace {
@@ -48,7 +53,9 @@ Options::Options()
 
 void Options::load()
 {
-    std::ifstream file("options.cfg");
+    std::ifstream file(OptionsFileName);
+    if (!file.good())
+        file.open("options.cfg");
     while (file.good()) {
         std::string key;
         file >> key;
@@ -101,7 +108,7 @@ void Options::load()
 
 void Options::save()
 {
-    std::ofstream file("options.cfg");
+    std::ofstream file(OptionsFileName);
     file << "fullscreen " << fullscreen << std::endl;
     file << "resolutionX " << resolutionX << std::endl;
     file << "resolutionY " << resolutionY << std::endl;
