@@ -376,6 +376,13 @@ public:
     bool isSphereVisible(const plasma::Vector<3, Fixed> &position, float radius, float range);
     // Whether the camera rests at its focus after terrain collision; rendering then hides the player's head.
     bool isCameraAtFocus();
+    // The zoom (not in the original): whether the zoom key narrows the view now, the eased zoom for
+    // the elapsed time, the drawn field of view (radians) and the world's projection for a magnification.
+    bool isZooming();
+    void updateZoom(int milliseconds);
+    float fieldOfView(float magnification);
+    plasma::Matrix<float> worldProjection(float magnification);
+    void extractFrustum(const plasma::Matrix<float> &projection);
     void drawRisingCubeRing(const plasma::Vector<3, Fixed> &position, const plasma::Vector<4, float> &startColor,
                             const plasma::Vector<4, float> &endColor, int time, const plasma::Matrix<float> &view,
                             const plasma::Matrix<float> &projection, float radius, float scale, int count);
@@ -695,6 +702,17 @@ public:
     Formula m_craftingFormula;
     // Six frustum planes extracted from projection times view: left, right, bottom, top, near and far.
     plasma::Vector<4, float> m_frustum[6];
+    // The zoom (not in the original). While the zoom key is held the view narrows by m_zoomFactor
+    // (2..8, set by the wheel in quarter octaves m_zoomStep -4..4); m_zoomAmount eases 0..1 in and out
+    // over ZoomMilliseconds and m_zoomMagnification is the drawn magnification (exactly 1 without zoom).
+    // m_frustumMagnification is the one m_frustum was extracted with; targets are picked with the
+    // unzoomed m_targetingProjectionMatrix, so the zoom changes only the picture.
+    int m_zoomStep;
+    float m_zoomFactor;
+    float m_zoomAmount;
+    float m_zoomMagnification;
+    float m_frustumMagnification;
+    plasma::Matrix<float> m_targetingProjectionMatrix;
     bool m_showPathSearch;
     Database m_charactersDatabase;
     Database m_worldsDatabase;

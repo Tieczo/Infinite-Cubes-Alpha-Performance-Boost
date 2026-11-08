@@ -151,6 +151,11 @@ void GameController::render()
     }
 
     float range = m_loadedMeshRadius + 22.4f;
+    // The chunks are tested against last frame's frustum. While zooming (and in the first frame after) that
+    // can be narrower than this frame's view, so they are tested against this frame's instead (no chunks
+    // missing at the picture's edges).
+    if (m_zoomMagnification != 1.0f || m_frustumMagnification != 1.0f)
+        extractFrustum(worldProjection(m_zoomMagnification));
     for (int x = activeX; x < activeX + activeSide; x++) {
         for (int y = activeY; y < activeY + activeSide; y++) {
             if (x < 0 || y < 0 || x >= ChunksPerWorld || y >= ChunksPerWorld)
@@ -413,15 +418,8 @@ void GameController::render()
     m_device->SetPixelShader(0);
     plasma::Matrix<float> skyView = m_worldViewMatrix;
     skyView.translate(plasma::Vector<3, float>(m_cameraPosition));
-    plasma::Matrix<float> skyProjection;
-    // The far plane: 2000 blocks up to 200% render distance, then growing with it (4000 at 400%), so the
-    // landscape and the clouds of the larger view square are not cut off.
-    float farPlane = m_options.renderDistance > 200 ? 2000.0f * m_options.renderDistance / 200.0f : 2000.0f;
-    // A narrower field of view while sneaking: 30 degrees instead of 50 (the planes 0.1 and farPlane
-    // blocks away).
-    skyProjection.setPerspective(m_player->m_entityData.binaryToggles.sneaking ? 30.0f / 180.0f * 3.1415927f
-                                                                               : 50.0f / 180.0f * 3.1415927f,
-                                 -((float)m_windowWidth / (float)m_windowHeight), 0.1f, farPlane);
+    // A narrower field of view while sneaking: 30 degrees instead of 50, and narrower still while zooming.
+    plasma::Matrix<float> skyProjection = worldProjection(m_zoomMagnification);
     m_device->SetTexture(0, 0);
     m_device->SetTransform(D3DTS_WORLD, (const D3DMATRIX *)&identity);
     m_device->SetTransform(D3DTS_VIEW, (const D3DMATRIX *)&identity);
@@ -490,27 +488,15 @@ void GameController::render()
     m_shader->apply();
     m_shader->setSky(skyColor0, skyColor1, skyColor2);
     m_projectionMatrix = skyProjection;
+    m_targetingProjectionMatrix = m_zoomMagnification != 1.0f ? worldProjection(1.0f) : skyProjection;
     plasma::Matrix<float> view = m_viewMatrix;
     m_device->SetRenderState(D3DRS_ZENABLE, TRUE);
     m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     m_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     m_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
-    // The view frustum's planes, for the visibility tests.
-    plasma::Matrix<float> clip = m_projectionMatrix * m_viewMatrix;
-    for (int i = 0; i < 4; i++)
-        m_frustum[0][i] = clip(3, i) + clip(0, i);
-    for (int i = 0; i < 4; i++)
-        m_frustum[1][i] = clip(3, i) - clip(0, i);
-    for (int i = 0; i < 4; i++)
-        m_frustum[2][i] = clip(3, i) + clip(1, i);
-    for (int i = 0; i < 4; i++)
-        m_frustum[3][i] = clip(3, i) - clip(1, i);
-    // Extract the far plane before the near plane.
-    for (int i = 0; i < 4; i++)
-        m_frustum[5][i] = clip(3, i) - clip(2, i);
-    for (int i = 0; i < 4; i++)
-        m_frustum[4][i] = clip(3, i) + clip(2, i);
+    extractFrustum(m_projectionMatrix);
+    m_frustumMagnification = m_zoomMagnification;
 
     // The lights of the frame: the magic projectiles
     for (std::list<BulletPacket>::iterator it = m_world.m_projectiles.begin(); it != m_world.m_projectiles.end();

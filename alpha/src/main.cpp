@@ -117,6 +117,9 @@ LRESULT CALLBACK WndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam
         break;
     case WM_KILLFOCUS:
         spikeEvent("window focus lost");
+        // The zoom key's release goes to another window.
+        if (g_game)
+            g_game->m_keys[g_game->m_options.zoomKey & 0xff] = false;
         break;
     default:
         return DefWindowProcW(window, message, wParam, lParam);

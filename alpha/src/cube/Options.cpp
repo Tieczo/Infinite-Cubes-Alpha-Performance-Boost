@@ -26,6 +26,9 @@ enum {
 enum {
     DefaultMinTimeStep = 9
 };
+enum {
+    DefaultZoomKey = 0x14 // VK_CAPITAL
+};
 }
 
 Options::Options()
@@ -49,7 +52,9 @@ Options::Options()
       fastPlantScan(1),
       threadedRendering(0),
       spikeLog(0),
-      guardianReliableBlock(0)
+      guardianReliableBlock(0),
+      zoom(1),
+      zoomKey(DefaultZoomKey)
 {}
 
 void Options::load()
@@ -104,9 +109,14 @@ void Options::load()
             file >> spikeLog;
         if (key == "guardianReliableBlock")
             file >> guardianReliableBlock;
+        if (key == "zoom")
+            file >> zoom;
+        if (key == "zoomKey")
+            file >> zoomKey;
     }
     if (creatureDistance > MaximumCreatureDistance)
         creatureDistance = MaximumCreatureDistance;
+    zoomKey &= 0xff;
 }
 
 void Options::save()
@@ -133,6 +143,8 @@ void Options::save()
     file << "threadedRendering " << threadedRendering << std::endl;
     file << "spikeLog " << spikeLog << std::endl;
     file << "guardianReliableBlock " << guardianReliableBlock << std::endl;
+    file << "zoom " << zoom << std::endl;
+    file << "zoomKey " << zoomKey << std::endl;
 }
 
 }
