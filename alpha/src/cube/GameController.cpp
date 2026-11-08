@@ -102,6 +102,25 @@ enum {
 enum {
     CameraDistancePerWheelStep = 2
 };
+// The zoom (not in the original): 4x at first, the wheel's steps a quarter octave each (2x..8x), easing
+// in and out over 120 milliseconds, the camera's turn following with smoothness 85 while zoomed.
+enum {
+    DefaultZoomFactor = 4
+};
+enum {
+    MaximumZoomStep = 4
+};
+enum {
+    ZoomMilliseconds = 120
+};
+enum {
+    ZoomCameraSmoothness = 85
+};
+// Smoothstep of the zoom's progress 0..1.
+float easeZoom(float amount)
+{
+    return amount * amount * (3.0f - 2.0f * amount);
+}
 enum {
     CameraEscapeRayLength = 100
 }; // a camera inside a block looks for open air from the player this far The map.
@@ -368,6 +387,11 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
     m_cameraRotation[2] = 0.0f;
     m_targetCameraRotation = m_cameraRotation;
     m_viewRadius = ChunkGridSide * 0.5f * BlocksPerChunk;
+    m_zoomStep = 0;
+    m_zoomFactor = DefaultZoomFactor;
+    m_zoomAmount = 0.0f;
+    m_zoomMagnification = 1.0f;
+    m_frustumMagnification = 1.0f;
 
     m_textFxNode = m_engine->createNode(0, 0, 0, m_engine->root(), L"textFX");
     m_minimapNode = m_engine->createNode(0, 0, 0, m_gameScreen, L"minimap");
@@ -4661,6 +4685,11 @@ void GameController::handleMouseMove(float x, float y)
         }
     } else {
         m_engine->getPointerNode(); // the result is not used
+        // The zoom turns the camera slower by its magnification.
+        if (m_zoomMagnification != 1.0f) {
+            x /= m_zoomMagnification;
+            y /= m_zoomMagnification;
+        }
         if (m_options.invertY)
             m_targetCameraRotation[0] -= m_options.cameraSpeed * 0.005f * y;
         else
@@ -4675,6 +4704,15 @@ void GameController::handleMouseMove(float x, float y)
 
 void GameController::handleMouseWheel(int delta)
 {
+    // While zooming the wheel sets the zoom's strength and nothing else.
+    if (isZooming()) {
+        m_zoomStep += delta;
+        if (m_zoomStep > MaximumZoomStep)
+            m_zoomStep = MaximumZoomStep;
+        if (m_zoomStep < -MaximumZoomStep)
+            m_zoomStep = -MaximumZoomStep;
+        return;
+    }
     if (m_mapOpen) {
         if (delta < 0)
             m_targetMapZoom *= 0.9f;
@@ -4691,6 +4729,72 @@ void GameController::handleMouseWheel(int delta)
         if (m_cameraDistance > MaximumCameraDistance)
             m_cameraDistance = MaximumCameraDistance;
     }
+}
+
+// The zoom key is held in the game, with the zoom switched on and no cursor shown (menus, chat, map).
+bool GameController::isZooming()
+{
+    return m_options.zoom && m_keys[m_options.zoomKey & 0xff] && m_player && !isCursorVisible();
+}
+
+// The zoom eases in while zooming and out after; the drawn strength follows the wheel's within about
+// 50 milliseconds. Without zoom the magnification is exactly 1.
+void GameController::updateZoom(int milliseconds)
+{
+    if (isZooming()) {
+        m_zoomAmount += milliseconds / (float)ZoomMilliseconds;
+        if (m_zoomAmount > 1.0f)
+            m_zoomAmount = 1.0f;
+    } else if (m_zoomAmount > 0.0f) {
+        m_zoomAmount -= milliseconds / (float)ZoomMilliseconds;
+    }
+    if (m_zoomAmount <= 0.0f) {
+        m_zoomAmount = 0.0f;
+        m_zoomMagnification = 1.0f;
+        return;
+    }
+    blend(m_zoomFactor, DefaultZoomFactor * powf(2.0f, m_zoomStep * 0.25f), milliseconds, 0.02f);
+    m_zoomMagnification = powf(m_zoomFactor, easeZoom(m_zoomAmount));
+}
+
+// 30 degrees while sneaking, else 50, narrowed so that the picture is magnified by the given factor.
+float GameController::fieldOfView(float magnification)
+{
+    float angle = m_player->m_entityData.binaryToggles.sneaking ? 30.0f / 180.0f * 3.1415927f
+                                                                : 50.0f / 180.0f * 3.1415927f;
+    if (magnification != 1.0f)
+        angle = 2.0f * atanf(tanf(angle * 0.5f) / magnification);
+    return angle;
+}
+
+// The far plane: 2000 blocks up to 200% render distance, then growing with it (4000 at 400%), so the
+// landscape and the clouds of the larger view square are not cut off; the near plane 0.1 blocks away.
+plasma::Matrix<float> GameController::worldProjection(float magnification)
+{
+    float farPlane = m_options.renderDistance > 200 ? 2000.0f * m_options.renderDistance / 200.0f : 2000.0f;
+    plasma::Matrix<float> projection;
+    projection.setPerspective(fieldOfView(magnification), -((float)m_windowWidth / (float)m_windowHeight), 0.1f,
+                              farPlane);
+    return projection;
+}
+
+// The view frustum's planes, for the visibility tests.
+void GameController::extractFrustum(const plasma::Matrix<float> &projection)
+{
+    plasma::Matrix<float> clip = projection * m_viewMatrix;
+    for (int i = 0; i < 4; i++)
+        m_frustum[0][i] = clip(3, i) + clip(0, i);
+    for (int i = 0; i < 4; i++)
+        m_frustum[1][i] = clip(3, i) - clip(0, i);
+    for (int i = 0; i < 4; i++)
+        m_frustum[2][i] = clip(3, i) + clip(1, i);
+    for (int i = 0; i < 4; i++)
+        m_frustum[3][i] = clip(3, i) - clip(1, i);
+    // Extract the far plane before the near plane.
+    for (int i = 0; i < 4; i++)
+        m_frustum[5][i] = clip(3, i) - clip(2, i);
+    for (int i = 0; i < 4; i++)
+        m_frustum[4][i] = clip(3, i) + clip(2, i);
 }
 
 bool GameController::isClassMasterNearby()
@@ -8339,8 +8443,15 @@ void GameController::update(int milliseconds)
         m_tradeCreature = 0;
 
     // The camera's turn, distance and zoom follow their targets; the turn's rate comes from the camera
-    // smoothness option.
-    blend(m_cameraRotation, m_targetCameraRotation, milliseconds, pow(0.005f, m_options.cameraSmoothness * 0.01f));
+    // smoothness option, eased to ZoomCameraSmoothness while zooming (the option itself is kept).
+    updateZoom(milliseconds);
+    if (m_zoomAmount > 0.0f) {
+        float smoothness = m_options.cameraSmoothness +
+                           (ZoomCameraSmoothness - m_options.cameraSmoothness) * easeZoom(m_zoomAmount);
+        blend(m_cameraRotation, m_targetCameraRotation, milliseconds, pow(0.005f, smoothness * 0.01f));
+    } else {
+        blend(m_cameraRotation, m_targetCameraRotation, milliseconds, pow(0.005f, m_options.cameraSmoothness * 0.01f));
+    }
     blend(m_targetCameraDistance, m_cameraDistance, milliseconds, 0.004f);
     blend(m_mapZoom, m_targetMapZoom, milliseconds, 0.004f);
 

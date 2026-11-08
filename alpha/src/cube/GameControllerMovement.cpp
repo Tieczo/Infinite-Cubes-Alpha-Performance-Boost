@@ -201,7 +201,7 @@ void GameController::moveCharacter(int milliseconds)
             plasma::Vector<3, float> view = m_viewMatrix * point;
             if (view[2] <= 0.0f)
                 continue;
-            plasma::Vector<3, float> screen = m_projectionMatrix * view;
+            plasma::Vector<3, float> screen = m_targetingProjectionMatrix * view;
             if (screen[0] < -1.0f || screen[0] > 1.0f || screen[1] < -1.0f || screen[1] > 1.0f)
                 continue;
             float distance = (other->m_entityData.position - m_player->m_entityData.position).squaredLength();
@@ -229,7 +229,7 @@ void GameController::moveCharacter(int milliseconds)
             plasma::Vector<3, float> view = m_viewMatrix * point;
             if (view[2] <= 0.0f)
                 continue;
-            plasma::Vector<3, float> screen = m_projectionMatrix * view;
+            plasma::Vector<3, float> screen = m_targetingProjectionMatrix * view;
             if (screen[0] < -1.0f || screen[0] > 1.0f || screen[1] < -1.0f || screen[1] > 1.0f)
                 continue;
             float distance = (other->m_entityData.position - m_player->m_entityData.position).squaredLength();

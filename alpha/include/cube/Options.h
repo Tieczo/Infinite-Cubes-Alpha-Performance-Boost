@@ -32,5 +32,9 @@ struct Options {
     int threadedRendering;   // a drawing thread makes the frame's device calls (not in the original)
     int spikeLog;            // spikes.log: long frames and what happened in them (SpikeLog.h; not in the original)
     int guardianReliableBlock; // World::m_guardianReliableBlock (not in the original)
+    // Holding zoomKey narrows the view (GameController::updateZoom; not in the original). The key is a
+    // virtual-key code, Caps Lock (0x14) at first: X opens the skills.
+    int zoom;
+    int zoomKey;
 };
 }

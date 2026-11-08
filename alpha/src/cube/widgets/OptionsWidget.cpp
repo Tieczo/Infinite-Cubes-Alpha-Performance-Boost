@@ -267,6 +267,14 @@ OptionsWidget::OptionsWidget(plasma::Engine *engine, plasma::Node *node, GameCon
     m_nextGuardianReliableBlock->setDisplay(rightButton->m_display->clone());
     m_nextGuardianReliableBlock->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this,
                                                &OptionsWidget::GuardianReliableBlockToggle, true);
+    m_previousZoom = leftButton->instance(node);
+    m_previousZoom->setTransformation(leftButton->m_transformation->clone());
+    m_previousZoom->setDisplay(leftButton->m_display->clone());
+    m_previousZoom->connectWidget(L"leftbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::ZoomToggle, true);
+    m_nextZoom = rightButton->instance(node);
+    m_nextZoom->setTransformation(rightButton->m_transformation->clone());
+    m_nextZoom->setDisplay(rightButton->m_display->clone());
+    m_nextZoom->connectWidget(L"rightbutton", plasma::WIDGET_EVENT_POINTER_PRESSED, this, &OptionsWidget::ZoomToggle, true);
     m_previousPage = leftButton->instance(node);
     m_previousPage->setTransformation(leftButton->m_transformation->clone());
     m_previousPage->setDisplay(leftButton->m_display->clone());
@@ -748,6 +756,7 @@ void OptionsWidget::drawPerformancePage()
     drawRow(L"Threaded Rendering", m_options.threadedRendering ? L"Yes" : L"No", 147.0f);
     drawRow(L"Spike Log", m_options.spikeLog ? L"Yes" : L"No", 177.0f);
     drawRow(L"Guardian Reliable Block", m_options.guardianReliableBlock ? L"Yes" : L"No", 207.0f);
+    drawRow(L"Zoom", m_options.zoom ? L"Yes" : L"No", 237.0f);
     colorArrows(m_previousPage, m_nextPage);
     colorArrows(m_previousFastCreatureUpdates, m_nextFastCreatureUpdates);
     colorArrows(m_previousFastTerrainLoading, m_nextFastTerrainLoading);
@@ -755,6 +764,7 @@ void OptionsWidget::drawPerformancePage()
     colorArrows(m_previousThreadedRendering, m_nextThreadedRendering);
     colorArrows(m_previousSpikeLog, m_nextSpikeLog);
     colorArrows(m_previousGuardianReliableBlock, m_nextGuardianReliableBlock);
+    colorArrows(m_previousZoom, m_nextZoom);
 }
 
 void OptionsWidget::showPage()
@@ -774,7 +784,8 @@ void OptionsWidget::showPage()
                                    m_previousFastPlantScan,       m_nextFastPlantScan,
                                    m_previousThreadedRendering,   m_nextThreadedRendering,
                                    m_previousSpikeLog,            m_nextSpikeLog,
-                                   m_previousGuardianReliableBlock, m_nextGuardianReliableBlock};
+                                   m_previousGuardianReliableBlock, m_nextGuardianReliableBlock,
+                                   m_previousZoom,                m_nextZoom};
     for (plasma::Node *button : general)
         button->setVisible(m_page == 0);
     for (plasma::Node *button : performance)
@@ -912,6 +923,11 @@ void OptionsWidget::GuardianReliableBlockToggle()
     m_options.guardianReliableBlock = !m_options.guardianReliableBlock;
 }
 
+void OptionsWidget::ZoomToggle()
+{
+    m_options.zoom = !m_options.zoom;
+}
+
 void OptionsWidget::PageToggle()
 {
     m_page = 1 - m_page;
@@ -1041,8 +1057,9 @@ void OptionsWidget::resized()
                                    {m_previousFastPlantScan, m_nextFastPlantScan},
                                    {m_previousThreadedRendering, m_nextThreadedRendering},
                                    {m_previousSpikeLog, m_nextSpikeLog},
-                                   {m_previousGuardianReliableBlock, m_nextGuardianReliableBlock}};
-    for (int i = 0; i < 7; i++) {
+                                   {m_previousGuardianReliableBlock, m_nextGuardianReliableBlock},
+                                   {m_previousZoom, m_nextZoom}};
+    for (int i = 0; i < 8; i++) {
         float y = m_page == 1 ? 12.0f + i * 30.0f : 432.0f;
         pageRows[i][0]->m_widget->moveTo(240.0f, y, true);
         button = pageRows[i][1]->m_widget;
