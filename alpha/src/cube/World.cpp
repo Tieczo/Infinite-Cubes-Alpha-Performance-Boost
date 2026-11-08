@@ -739,13 +739,17 @@ const int WakeupStunTimeMs = 3000;
 // the spawn's object disabled, its loot, its companion's death, the mission of its eight-zone
 // square advanced (a completed one removes the square's extra spawns and rewards each player who
 // fought), the kill packets and xp, and its spawn's respawn timer.
-void World::applyHit(const HitPacket &hit, ServerUpdates *updates, std::set<Zone *> *changedZones)
+void World::applyHit(const HitPacket &hit, ServerUpdates *updates, std::set<Zone *> *changedZones, bool received)
 {
     Creature *target = creatureByID(hit.targetId);
     if (!target || target->m_entityData.hp <= 0.0f)
         return;
     if (!m_localPlayer && target->m_entityData.hostilityType == HostilityPlayer) {
-        updates->hits.push_back(hit);
+        // Only a hit from a client is passed on here. The server's own hits (attackCreature, heals) are
+        // already in the list; the original adds them a second time, so the player's client took every
+        // creature hit twice (twice the damage shown, twice the block cost).
+        if (received)
+            updates->hits.push_back(hit);
         return;
     }
     Creature *attacker = creatureByID(hit.attackerId);
