@@ -1,4 +1,9 @@
-# Cube World Alpha – Performance
+# Infinite Cubes Alpha Performance Boost
+
+**Cube-World-Alpha-Mod: bis zu 7× mehr fps, 4× Sichtweite, Gameplay 1:1**
+
+> **Gebaut auf [Infinite Cubes](https://github.com/coremaze/Infinite-Cubes) von coremaze.** Inoffiziell, nicht von Picroma.
+> Du brauchst eine eigene Cube World Alpha; Spieldaten sind nicht enthalten.
 
 [English](PERFORMANCE.md)
 
