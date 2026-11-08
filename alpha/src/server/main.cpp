@@ -22,6 +22,11 @@ enum {
 enum {
     UpdateDelay = 20
 };
+// After a pass that generated no zone, the generation thread sleeps this long instead of spinning on a core (not in
+// the original; idea from SirLefti's Cube-World-Server-Idle-CPU-Fix). Passes that generate a zone do not wait.
+enum {
+    GenerationIdleSleep = 10
+};
 
 // The settings after the seed in server.cfg (not in the original), one "key value" per line in any order; a missing,
 // unknown or invalid line keeps the original's value, so a server.cfg with only the seed works as before. Read again
@@ -166,6 +171,8 @@ int main()
             }
             if (found)
                 world->generateZone(best[0], best[1]);
+            else
+                Sleep(GenerationIdleSleep);
 
             // Once a second, unload the zones, regions and records that no player is near.
             int now = gameTime();
