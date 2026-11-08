@@ -431,9 +431,12 @@ void Server::start()
                             disconnected = true;
                             continue;
                         }
-                        // To every connection; an empty slot is not checked.
+                        // To every connection. The slot of a player who has left is empty; the original does not
+                        // check it and crashes.
                         world->enterRegions();
                         for (int i = 0; i < (int)connections.size(); i++) {
+                            if (!connections[i])
+                                continue;
                             Connection::ChatLine line;
                             line.text = text;
                             line.creatureId = creatureId;
