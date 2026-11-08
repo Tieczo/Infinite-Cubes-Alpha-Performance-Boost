@@ -13,8 +13,8 @@ The original Infinite Cubes README follows.
 
 # Infinite Cubes
 
-> **This fork:** Cube World Alpha as a native Linux program (no Wine; SDL3, DXVK-native, FAudio),
-> with render distance up to 200%, anti-aliasing up to 8x and the stutter fix. Branch
+> **Linux branch:** Infinite Cubes Alpha Performance Boost as a native Linux program (no Wine; SDL3, DXVK-native, FAudio),
+> with render distance up to 400%, anti-aliasing up to 8x and the stutter fix. Branch
 > `mod/alpha-linux-native`; building and setup: [alpha/platform/linux/README.md](alpha/platform/linux/README.md).
 > You need your own copy of Cube World Alpha for its data files.
 
