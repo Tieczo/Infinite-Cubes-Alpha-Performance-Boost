@@ -216,8 +216,10 @@ public:
     // Terrain-support cleanup and buff delivery (World.cpp).
     void removeUnsupportedPlants(int x1, int y1, int x2, int y2);
     void applyBuff(Creature *creature, const Creature::Buff &buff, ServerUpdates *updates);
-    // Applies a hit to its target.
-    void applyHit(const HitPacket &hit, ServerUpdates *updates, std::set<Zone *> *changedZones);
+    // Applies a hit to its target. received: the hit came from a client (the server passes such a hit on a
+    // player on to the clients; its own hits are already in the list).
+    void applyHit(const HitPacket &hit, ServerUpdates *updates, std::set<Zone *> *changedZones,
+                  bool received = false);
     // Resolves one creature's attack on another and queues the resulting hits. False when the attack
     // is void, missed or blocked.
     bool attackCreature(Creature *target, Creature *attacker, float damage, bool critical, bool powered,

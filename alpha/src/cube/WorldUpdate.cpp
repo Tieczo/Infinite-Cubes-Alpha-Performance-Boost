@@ -589,7 +589,7 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
             if (m_client)
                 outgoing->hits.clear();
             for (std::list<HitPacket>::iterator hit = incoming->hits.begin(); hit != incoming->hits.end(); hit++)
-                applyHit(*hit, outgoing, &changedZones);
+                applyHit(*hit, outgoing, &changedZones, true);
         }
         std::list<BuffPacket> &buffs = incoming->buffs;
         if (!buffs.empty()) {
