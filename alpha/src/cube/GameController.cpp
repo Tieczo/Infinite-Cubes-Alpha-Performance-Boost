@@ -4485,7 +4485,12 @@ void GameController::handleKeyDown(unsigned char key)
                 if (command == L"/name") {
                     std::wstring name;
                     stream >> name;
-                    if (name.size() != 0)
+                    // A name that does not fit the 16 bytes (with the terminator) is refused; the original
+                    // copies it past the end of the character's data.
+                    if (name.size() >= sizeof(m_player->m_entityData.name))
+                        m_chatWidget->printMessage(L"Character name too long",
+                                                   plasma::Vector<4, float>(1.0f, 0.2f, 0.2f, 1.0f));
+                    else if (name.size() != 0)
                         strcpy(m_player->m_entityData.name, narrowString(name).c_str());
                 } else if (command == L"/connect") {
                     std::wstring address;
