@@ -36,6 +36,8 @@ World::World(IDirect3DDevice9 *device, bool client)
       m_debugFlags(0),
       m_client(client),
       m_localPlayer(0),
+      m_companionLevelSeen(-1),
+      m_companionXpSeen(-1),
       m_creatureDistanceScale(1.0f),
       m_fastCreatureUpdates(false),
       m_creatureCellCount(0),

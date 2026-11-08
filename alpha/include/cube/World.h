@@ -559,6 +559,10 @@ public:
     // The constructor client flag; while set, the world saves no zones or regions.
     bool m_client;
     Creature *m_localPlayer; // Initially null; assigned the local player by GameController.
+    // A client's last seen level and experience of the local player's companion, -1 before the first (the pet
+    // leveling fix in update; not in the original).
+    int m_companionLevelSeen;
+    int m_companionXpSeen;
     // The creature distance option (1 = the original): spawn and despawn radii are multiplied by it,
     // and creatures are brought to life from the zones within that reach of a player.
     float m_creatureDistanceScale;

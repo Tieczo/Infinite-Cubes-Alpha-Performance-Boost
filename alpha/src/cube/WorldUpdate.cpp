@@ -794,6 +794,28 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                 creatureByID(it->second->m_entityData.ownerId))
                 creatureByID(it->second->m_entityData.ownerId)->m_companionId = it->second->m_id;
         }
+        // The local player's pet item follows its companion's level and experience, as the host's copy does (not
+        // in the original: there the client keeps the item it has and sends it back, so a pet's progress on a
+        // server is lost). Only progress is taken: the item must have held the companion's values before they
+        // changed, so a pet item just put on is not given the previous companion's values. Based on
+        // coremaze/Cube-World-Multiplayer-Pet-Leveling-Fix.
+        Creature *companion = m_localPlayer ? creatureByID(m_localPlayer->m_companionId) : 0;
+        if (companion && companion->m_entityData.hostilityType == HostilityPet &&
+            companion->m_entityData.ownerId == m_localPlayer->m_id) {
+            Item &pet = m_localPlayer->m_entityData.equipment.pet;
+            int level = companion->m_entityData.level;
+            int xp = companion->m_entityData.xp;
+            if (pet.category == ItemCategoryPet && (level != m_companionLevelSeen || xp != m_companionXpSeen) &&
+                pet.level == m_companionLevelSeen && (int)pet.modifier == m_companionXpSeen) {
+                pet.level = (short)level;
+                pet.modifier = xp;
+            }
+            m_companionLevelSeen = level;
+            m_companionXpSeen = xp;
+        } else {
+            m_companionLevelSeen = -1;
+            m_companionXpSeen = -1;
+        }
     } else {
         // The spawns of the active zones move to the latest place of their daily schedule that is due.
         for (std::set<Zone *>::iterator it = playerZones.begin(); it != playerZones.end(); it++) {
