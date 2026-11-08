@@ -212,5 +212,9 @@ enum {
     GeneratedCreatureZoneRadix = 65536,
     GeneratedCreatureIndexRadix = 256
 };
+// Added to every generationKey (not in the original): without it the zone (0, 0) gives the ids 0 (none) and
+// 1..10 (the players'). Its low 32 bits are zero, so (int) casts of an id and the order of ids stay the same.
+// Based on coremaze/Cube-World-GUID-Fix-Mod.
+const long long GeneratedCreatureIdOffset = 0x10000000000LL;
 
 }

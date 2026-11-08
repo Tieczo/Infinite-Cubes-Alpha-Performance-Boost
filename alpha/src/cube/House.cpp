@@ -3301,7 +3301,7 @@ Zone::Object makeLargeHouseObject(const plasma::Vector<3, Fixed> &position, int 
 // A zone's generated entries use eight low bits for the entry index.
 long long generationKey(int x, int y, int index)
 {
-    return ((long long)y * GeneratedCreatureZoneRadix + x) * GeneratedCreatureIndexRadix + index;
+    return GeneratedCreatureIdOffset + ((long long)y * GeneratedCreatureZoneRadix + x) * GeneratedCreatureIndexRadix +
+           index;
 }
-
 }
