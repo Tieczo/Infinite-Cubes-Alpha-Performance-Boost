@@ -1041,6 +1041,9 @@ void GameController::render()
                     if (item->hiddenTimeRemaining != 0)
                         continue;
                     Sprite *sprite = m_world.m_spriteManager.itemSprite(&item->item);
+                    // An item without a model (a bad id) is not drawn; the original crashes here.
+                    if (!sprite)
+                        continue;
                     float radius = (float)sprite->sizeX() * 0.7f * item->scale;
                     plasma::Vector<3, Fixed> position = item->position;
                     // A dropped item bounces once.
