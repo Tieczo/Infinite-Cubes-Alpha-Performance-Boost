@@ -1,5 +1,6 @@
 // The client uses Server for local update queues. The dedicated server also manages sockets, connection threads and player sessions.
 #include "cube/Server.h"
+#include "cube/GameTime.h"
 #include "cube/HitPacket.h"
 #include "cube/BuffPacket.h"
 #include "cube/BulletPacket.h"
@@ -508,7 +509,7 @@ void Server::start()
                 std::map<long long, Creature::EntityData> visible;
                 bool disconnected = false;
                 timeBeginPeriod(1);
-                int startTime = timeGetTime();
+                int startTime = gameTime();
                 while (running && connections[slot]) {
                     visible.clear();
                     // Collected but never sent.
@@ -518,7 +519,7 @@ void Server::start()
                     // Other players anywhere, other creatures within 200 blocks. After the first half second one
                     // creature the player has not seen yet is added per tick.
                     bool mayAdd = false;
-                    if ((int)timeGetTime() - startTime > 500)
+                    if (gameTime() - startTime > 500)
                         mayAdd = true;
                     for (std::map<long long, Creature *>::iterator it = world->m_creatures.begin();
                          it != world->m_creatures.end(); ++it) {
@@ -678,7 +679,7 @@ void Server::start()
 
                     // At most one tick per 20 ms.
                     static int lastTick;
-                    int now = timeGetTime();
+                    int now = gameTime();
                     if (now - lastTick < 20)
                         Sleep(lastTick - now + 20);
                     lastTick = now;

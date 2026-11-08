@@ -1,4 +1,5 @@
 #include "cube/WorldDimensions.h"
+#include "cube/GameTime.h"
 // GameController manages the game client, rendering chunks and saved-world previews.
 #include "cube/GameController.h"
 #include "cube/SpikeLog.h"
@@ -1388,7 +1389,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                 }
                 LeaveCriticalSection(&m_chunkUpdateLock);
             }
-            int now = timeGetTime();
+            int now = gameTime();
             if (now - lastSave > 60000 && !m_world.getName().empty() && m_running) {
                 saveCharacter(m_selectedCharacter, m_player);
                 lastSave = now;
@@ -1402,7 +1403,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
     // centres on, then, ten times, the nearest zone within 10 whose map tile is missing or out of
     // date, and unloads distant tiles once a second.
     m_mapThread = StartThread([this]() {
-        int lastUnload = timeGetTime();
+        int lastUnload = gameTime();
         while (m_running) {
             EnterCriticalSection(&m_mapUpdateLock);
             EnterCriticalSection(&m_streamingLock);
@@ -1477,7 +1478,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                     }
                 }
             }
-            int now = timeGetTime();
+            int now = gameTime();
             if (now - lastUnload > 1000) {
                 lastUnload = now;
                 m_worldMap.cleanUp(centre[0], centre[1]);
@@ -1493,7 +1494,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
     // zones, regions and records far from every request; after a world change it sets the world up
     // again, adds it to the saved worlds and places the player.
     m_zoneGenerationThread = StartThread([this]() {
-        int lastCleanup = timeGetTime();
+        int lastCleanup = gameTime();
         while (m_zoneGenerationRunning) {
             EnterCriticalSection(&m_streamingLock);
             bool worldChanged = m_seed != m_world.getSeed() || m_worldName != m_world.getName();
@@ -1577,7 +1578,7 @@ GameController::GameController(IDirect3DDevice9 *device, CubeShader *shader, pla
                     LeaveCriticalSection(&m_streamingLock);
                 }
             }
-            int now = timeGetTime();
+            int now = gameTime();
             if (worldChanged || now - lastCleanup > 1000) {
                 lastCleanup = now;
                 int keepRange = (3 * activeViewSide() + ChunkGridSide - 1) / ChunkGridSide + 1;
@@ -2345,7 +2346,7 @@ void GameController::connect(const std::string &address)
                 if (packetId == PacketEntitiesEnd) {
                     // The time between two server ticks.
                     static int tickTime;
-                    int now = timeGetTime();
+                    int now = gameTime();
                     m_world.enterRegions();
                     if (lastTick)
                         tickTime = now - lastTick;
@@ -2682,7 +2683,7 @@ void GameController::connect(const std::string &address)
             Creature::EntityData sent;
             bool failed = false;
             timeBeginPeriod(1);
-            int zoneTime = timeGetTime();
+            int zoneTime = gameTime();
             while (m_connected && !failed) {
                 int packetId = PacketEntityData;
                 if (send(m_socket, (char *)&packetId, sizeof(packetId), 0) == SOCKET_ERROR)
@@ -2764,7 +2765,7 @@ void GameController::connect(const std::string &address)
                     std::list<plasma::Vector<2, int>> zoneRequests(m_zoneRequests);
                     std::list<plasma::Vector<2, int>> regionRequests(m_regionRequests);
                     LeaveCriticalSection(&m_streamingLock);
-                    int now = timeGetTime();
+                    int now = gameTime();
                     if (now - zoneTime > 1000) {
                         zoneTime = now;
                         for (std::list<plasma::Vector<2, int>>::iterator it = zoneRequests.begin();
@@ -4605,8 +4606,8 @@ void GameController::handleKeyUp(unsigned char key)
 void GameController::handleMouseMove(float x, float y)
 {
     Controller::handleMouseMove(x, y);
-    static int lastTime = timeGetTime();
-    int now = timeGetTime();
+    static int lastTime = gameTime();
+    int now = gameTime();
     int milliseconds = now - lastTime;
     lastTime = now;
     static float smoothedY;
@@ -6361,7 +6362,7 @@ void GameController::update(int milliseconds)
 
     // The audio engine's housekeeping, and every ten seconds the font engine drops the glyphs it has
     // not drawn since.
-    int now = timeGetTime();
+    int now = gameTime();
     Sprite::s_frame = now;
     m_audio->cleanUp();
     m_audio->update();
@@ -8186,7 +8187,7 @@ void GameController::update(int milliseconds)
 
     // Changed blocks remesh their chunk and its neighbours. A block outside the world ends the frame
     // here (the code returns).
-    int remeshTime = timeGetTime();
+    int remeshTime = gameTime();
     for (std::list<ServerUpdates::BlockPacket>::iterator it = updates.blocks.begin(); it != updates.blocks.end();
          it++) {
         for (int dx = -1; dx <= 1; dx++) {

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "cube/WorldDimensions.h"
+#include "cube/GameTime.h"
 // Renders the world, creatures, effects and interface, with helpers for smoothing and cube effects.
 #include <algorithm>
 #include <cmath>
@@ -113,7 +114,7 @@ static bool sameUploadedLights(const Chunk &a, const Chunk &b)
 // Renders one frame after update: swaps in completed chunk meshes, gathers visible chunks and lights, draws the sky or map or waiting screen, then clouds, chunks, creatures, objects, effects, water and interface. Light radii are in blocks; colors are RGB or RGBA in the range zero to one. Model turning rates use degrees per millisecond, and interface positions use pixels. The normal sky clear color is opaque blue; player-only screenshots use white.
 void GameController::render()
 {
-    int startTime = timeGetTime();
+    int startTime = gameTime();
     setThreadedRendering(m_device, m_options.threadedRendering != 0);
     // The cloud sprite is tinted the sky's blue.
     Sprite *cloud = m_world.m_spriteManager.sprite(SpriteCloud02);
