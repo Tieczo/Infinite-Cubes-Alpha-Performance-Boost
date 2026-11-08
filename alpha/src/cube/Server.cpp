@@ -23,6 +23,11 @@ namespace {
 enum {
     ListenBacklog = 10
 };
+// The longest chat line the server accepts, in characters (not in the original; based on
+// coremaze/Cube-World-Server-Chat-Overallocation-Fix, which allows 512).
+enum {
+    MaxChatLength = 4096
+};
 }
 
 #ifdef CUBE_SERVER
@@ -426,6 +431,15 @@ void Server::start()
                         }
                         if (length <= 0)
                             break;
+                        // A length no chat line has ends the connection; the original allocates it and runs out
+                        // of memory (a crafted packet crashes the server).
+                        if (length > MaxChatLength) {
+                            std::cout << "A player sent a chat packet of length " << length
+                                      << ". Closing client connection." << std::endl;
+                            shutdown(connections[slot]->socket, SD_BOTH);
+                            disconnected = true;
+                            continue;
+                        }
                         // UTF-16 on the wire, whatever the size of wchar_t.
                         std::vector<unsigned short> units(length);
                         if (receiveAll(connections[slot]->socket, (char *)&units[0], length * 2, 0) == SOCKET_ERROR) {
