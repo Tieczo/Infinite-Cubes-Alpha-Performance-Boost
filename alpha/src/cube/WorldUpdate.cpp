@@ -765,7 +765,8 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                     if (!creature)
                         continue;
                     plasma::Vector<3, Fixed> &position = object.position;
-                    if (!((position - creature->m_entityData.position).squaredLength() < 25) ||
+                    if (!isShortOffset(position - creature->m_entityData.position) ||
+                        !((position - creature->m_entityData.position).squaredLength() < 25) ||
                         creature->m_entityData.hostilityType == HostilityEnemy)
                         continue;
                     plasma::Vector<3, float> push(creature->m_entityData.position - position);
@@ -1079,7 +1080,8 @@ void World::update(int milliseconds, ServerUpdates *outgoing, ServerUpdates *inc
                     float reach = size[0] * 0.7f + 8.0f;
                     plasma::Vector<3, Fixed> &position = victim->m_entityData.position;
                     plasma::Vector<3, Fixed> offset = position - origin;
-                    if (!(plasma::Vector<2, Fixed>(offset[0], offset[1]).squaredLength() < reach * reach))
+                    if (!isShortOffset(offset) ||
+                        !(plasma::Vector<2, Fixed>(offset[0], offset[1]).squaredLength() < reach * reach))
                         continue;
                     float height = fabsf((float)(position[2] - origin[2]));
                     if (!(size[2] * 0.5f + dead->m_entityData.appearance.size[2] + 8.0f > height))
