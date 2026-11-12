@@ -1,0 +1,3 @@
+#!/bin/bash
+# t CMD...: one command line for the running test build (gives up after 2 s if nobody reads the fifo)
+timeout 2 bash -c 'echo "$1" > "$2/fifo"' _ "$*" "$TESTDIR" || echo "t: no reader for: $*" >&2
