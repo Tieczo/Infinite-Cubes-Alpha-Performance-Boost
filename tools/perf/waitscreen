@@ -1,0 +1,8 @@
+#!/bin/bash
+# waitscreen NAME [seconds]: asks the test build which screen is shown until it is NAME
+t="$(dirname "$0")/t"
+for i in $(seq $((${2:-10}*4))); do
+  rm -f "$TESTDIR/screen.txt"; $t screen "$TESTDIR/screen.txt"; sleep 0.25
+  [ "$(cat "$TESTDIR/screen.txt" 2>/dev/null)" = "$1" ] && exit 0
+done
+echo "waitscreen: $1 not reached (is: $(cat "$TESTDIR/screen.txt" 2>/dev/null))" >&2; exit 1

@@ -1,0 +1,4 @@
+#!/bin/bash
+# fclick X Y [wait]: left click at back-buffer pixels in fullscreen
+t="$(dirname "$0")/t"
+$t move $1 $2; sleep 0.4; $t move $(($1+1)) $(($2+1)); sleep 0.4; $t down 1; sleep 0.15; $t up 1; sleep ${3:-1.5}
