@@ -69,36 +69,30 @@ what and why, the measurement (before → after, scene, runs) and the source (re
 
 ## Expensive lessons
 
+Kept here only if a miss costs a session or silently breaks rule 1; measuring and network details are in the skills.
+
 - **`rand()` order is part of the world.** GCC evaluates several `rand()` in one expression in a different order than
   MSVC: tree colours, villages and loot differed. Multi-`rand()` expressions are split into temporaries in the original's
   order. Never add, remove or reorder `rand()` calls, also not in `render()` (bird/cricket sounds and leaf particles
   draw from the same generator as the game logic).
 - **Linux must reproduce Microsoft's `rand`.** glibc's generator differs and is shared across threads: Linux made other
   worlds than Windows. `platform/linux/Rand.cpp` is the MS CRT generator, one state per thread (`--wrap`).
-- **Proof against the original:** maps bit-identical with `map_online_<seed>.db` written by Cube.exe, server objects equal
-  to Server.exe's. Tiles saved in 2015 differ for today's Cube.exe too; that is not a port bug.
 - **LTO and compiler flags rejected:** ±0.4 % fps, and LTO changes all generated zones (float). `WORLDHASH=1` catches that.
-- **Minimised measures like visible**, headless roughly too; but compare headless only with headless. Use gamescope
-  `--backend headless` so nobody mistakes a test window for their game (that happened with a fullscreen run).
 - **Do not take the focus reset for a game stutter.** Every focus gain and resize resets the D3D device (original
   behaviour); the reset waits up to ~0.5 s on `m_mapUpdateLock`. A spike after touching the window is this. Rapid resizing
   can crash in DXVK after the reset: old bug, also in the base version.
 - **A/B pictures only in the same process**, game time stopped, old/new/old/new (`run.sh ABSHOTS=1`). Separate runs are
   never pixel-identical (zone threads, menus run in real time). Whole-run behaviour comparisons failed for the same reason;
   for logic changes use a shadow check (old and new code on the same state in the same frame, `rand()` replayed).
-- **Stars over stunned creatures turn by the wall clock** (the render pass's clock), not game time: freeze that too for A/B.
 - **The original Server.exe sends every creature hit on a player twice** (`applyHit` re-queues it): double damage and
   block cost online. Fixed in our server; our client on an original server still gets both.
 - **Rubberbanding at 400 %** is the client's receive thread (~8–10 ticks/s at ~300 creatures, two world-lock cycles per
   creature), not the server: the TCP window fills, server `send()` blocks for seconds, data arrives up to ~15 s late.
-- **Keep the server tick quirk:** `lastTick` is set before `Sleep` and shared, so ~100 instead of 50 ticks/s: original
-  behaviour. Clients delete every creature not sent in a tick, so a server cannot send far creatures less often.
-- **The Linux branch was rebased onto the mod branch** repeatedly: pushing it needs `--force`.
+- **Never push with `--force`.** History was rewritten once (anonymised, 2026-11-08); since then both branches only
+  move forward. A rejected push means fetch and rebase your commits, not overwrite.
 - **Rejected after measuring:** creature batching and plant instancing (≤ 0.15 ms), merging locks in the drawing thread
   (changes loading), a restart-only drawing-thread switch, single player through a local server (no gain in spikes),
   faster chunk meshing (reverted: 2.5 s faster loading not worth 125 lines in shading), generating several zones at once
   (reverted until the chunk thread's pause was fixed, then brought back). Check `git log` for a revert before retrying.
 - **Mass-combat overload is test-made:** above ~60 enemies at one spot `World::update` explodes (projectiles × creatures).
   The mass-combat scene keeps enemy count fixed; do not optimise for a pile no player builds.
-- **Tool anchors drift.** The profiler patch anchors on source lines (e.g. `timeGetTime()` became `gameTime()` with the
-  24.8-day timer fix). Fix the tool, never bend game code to a tool.

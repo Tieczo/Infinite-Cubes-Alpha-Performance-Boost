@@ -28,5 +28,13 @@ Scripts: `tools/perf/` (see `tools/README.md` for the environment variables). Li
    (`shadow_check_example.py`) for AI/update code. Whole-run comparisons do not work (threads, real-time menus).
 7. **Report** in the commit body: scene, settings, runs, mean (range), p99, before → after. Say what was not measured.
 
-Pitfalls: do not touch a test window during a run (focus gain resets the device and makes a spike); values across
-the `rand()`-order fix (tree colours) and from old maximised-window runs are not comparable.
+Pitfalls:
+- Do not touch a test window during a run (focus gain resets the device and makes a spike). Values across the
+  `rand()`-order fix (tree colours) and from old maximised-window runs are not comparable.
+- Minimised measures like visible, headless roughly too. Headless gamescope is the default so nobody mistakes a test
+  window for their game (a fullscreen test run once was).
+- Stars over stunned creatures turn by the wall clock, not game time: freeze that too for A/B pictures.
+- Proof against the original: maps bit-identical with `map_online_<seed>.db` written by Cube.exe. Tiles saved in 2015
+  differ for today's Cube.exe too; that is not a port bug.
+- Tool anchors drift: the profiler patch anchors on source lines (`timeGetTime()` became `gameTime()`). Fix the tool,
+  never bend game code to a tool.
