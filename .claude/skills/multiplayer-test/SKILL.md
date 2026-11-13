@@ -22,6 +22,9 @@ your playing Wine prefix.
    that is the original's bug, not a regression.
 5. For network performance (rubberbanding) measure ticks per second at the client and `ss -tni` (Send-Q, Recv-Q,
    `rwnd_limited`) with ~300 creatures (400 %) and at 100 %; compare with the original Server.exe at 100 %.
+6. Server objects equal to Server.exe's. Keep the tick quirk: `lastTick` is set before `Sleep` and shared, so ~100
+   instead of 50 ticks/s (original). Clients delete every creature not sent in a tick, so far creatures cannot be sent
+   less often.
 
 Rules: protocol, packet layout and world generation stay unchanged. Server behaviour that changes what players see is a
 `server.cfg` line with the original's value as default. Port 12345 is shared: one test at a time (`CW_LOCK`).
