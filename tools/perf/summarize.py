@@ -23,11 +23,13 @@ def parse(path):
             hits += 1
         if l.startswith('RUN ') and 'combat=1' in l:
             combat = True
-        if l.startswith('MEASURE'):
+        if l.startswith('MEASURE') or l.startswith('PROF sampling on'):
             measured = True
             continue
         m = re.match(r'FRAMETIMES n=(\d+) mean=([\d.]+)ms fps=([\d.]+) p50=([\d.]+)ms p99=([\d.]+)ms p999=([\d.]+)ms max=([\d.]+)ms', l)
         if m:
+            measured = False
+            cur = None
             ft = dict(n=int(m.group(1)), fps=float(m.group(3)), p50=float(m.group(4)), p99=float(m.group(5)),
                       p999=float(m.group(6)), max=float(m.group(7)))
         if not l.startswith('PROF'):
