@@ -25,7 +25,7 @@ sleep 3; DSP=$(grep -oE "Starting Xwayland on :[0-9]+" $R/cube.log | head -1 | g
 shot() { GAMESCOPE_WAYLAND_DISPLAY=gamescope-0 timeout 8 gamescopectl screenshot $R/$1.png > /dev/null 2>&1; sleep 0.7; }
 sleep 18; H wait; shot o0-start
 C where; C click 1280 781; sleep 3; shot o1; C click 1280 595; sleep 2; C click 1460 647; sleep 3; shot o2-welten
-C click 2390 1358; sleep 2.5; C click 1280 624; sleep 1; C type 127.0.0.1; sleep 1; shot o3-adresse; C click 1280 707; sleep 6; shot o4-verbunden
+C click 2390 1358; sleep 2.5; C click 1280 635; sleep 1; H type 127.0.0.1; sleep 1; shot o3-adresse; C click 1280 720; sleep 6; shot o4-verbunden
 grep -E "joined|Client version|Wrong" $R/server.log | cut -c1-80
 # Linux-Test-Client
 LT=$MP/lin-cli; cd $LT; export TESTDIR=$LT; rm -f Save/map_online_*.db
