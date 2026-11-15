@@ -25,7 +25,9 @@ C click 2390 1358; sleep 2.5; C click 1280 624; sleep 1; C type 127.0.0.1; sleep
 grep -E "joined|Client version|Wrong" $R/server.log | cut -c1-80
 # Linux-Test-Client
 LT=$MP/lin-cli; cd $LT; export TESTDIR=$LT; rm -f Save/map_online_*.db
-CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$LT/fifo env -u GLIBC_TUNABLES timeout 220 ./Cube > $R/cli.log 2>&1 & p=$!
+# HEADLESS=1 (default): our client runs invisible in gamescope, like run.sh; HEADLESS=0 for a desktop window.
+GS=(); [ "${HEADLESS:-1}" = 1 ] && GS=(env -u WAYLAND_DISPLAY gamescope --backend headless -W 2560 -H 1440 -w 2560 -h 1440 --expose-wayland --)
+CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$LT/fifo env -u GLIBC_TUNABLES timeout 220 "${GS[@]}" ./Cube > $R/cli.log 2>&1 & p=$!
 for i in $(seq 40); do grep -q 'read cursor.plx' $R/cli.log && break; sleep 1; done; sleep 4
 $X/waitscreen start 20; $X/fclick 1280 794 2; $X/waitscreen characters 8; $X/fclick 1280 608 1.5; $X/fclick 1460 660 2; $X/waitscreen worlds 8; sleep 1
 $X/fclick 2390 1384 2; $X/fclick 1280 637 1; $X/t text 127.0.0.1; sleep 1; $X/fclick 1280 720 3

@@ -14,7 +14,9 @@ if [ $WH = orig ]; then . $MP/env.sh; ( sleep $((SECS+60)); echo q ) | timeout -
 else ( sleep $((SECS+60)); echo q ) | LD_LIBRARY_PATH=./lib timeout -k 5 $((SECS+80)) nice -n 5 ./Server > $R/server.log 2>&1 & sv=$!; fi
 unset WINEPREFIX WINEARCH WINEDEBUG WINEDLLOVERRIDES
 sleep 6; cd $T; export TESTDIR=$T; rm -f Save/map_online_*.db
-CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$T/fifo env -u GLIBC_TUNABLES timeout $((SECS+55)) ./Cube > $R/cli.log 2>&1 & p=$!
+# HEADLESS=1 (default): our client runs invisible in gamescope, like run.sh; HEADLESS=0 for a desktop window.
+GS=(); [ "${HEADLESS:-1}" = 1 ] && GS=(env -u WAYLAND_DISPLAY gamescope --backend headless -W 2560 -H 1440 -w 2560 -h 1440 --expose-wayland --)
+CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$T/fifo env -u GLIBC_TUNABLES timeout $((SECS+55)) "${GS[@]}" ./Cube > $R/cli.log 2>&1 & p=$!
 for i in $(seq 40); do grep -q 'read cursor.plx' $R/cli.log && break; sleep 1; done; sleep 4
 $X/waitscreen start 20; $X/fclick 1280 794 2; $X/waitscreen characters 8; $X/fclick 1280 608 1.5; $X/fclick 1460 660 2; $X/waitscreen worlds 8; sleep 1
 $X/fclick 2390 1384 2; $X/t shot $R/a-connect.ppm; sleep 1.5
