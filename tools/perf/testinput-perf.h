@@ -163,6 +163,11 @@ static void testInputPoll()
                         g_game->m_cameraRotation[2], g_game->m_cameraRotation[0], pos[0], pos[1], pos[2],
                         g_game->m_player->m_entityData.rotation[2]);
             }
+        } else if (c == "profile-end") {
+            g_profSampling = 0;
+            if (const char *flag = getenv("CUBE_PROF_SAMPLE_FLAG")) unlink(flag);
+            profWriteSamples();
+            g_profMeasuredFrames.clear();
         } else if (c == "worldhash") {
             // A hash of every loaded zone within RADIUS zones of the player (blocks of all columns with their
             // heights, all plants), one "WORLDHASH x y hash" line per zone, under the world's zone lock. With

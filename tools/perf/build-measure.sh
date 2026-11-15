@@ -65,6 +65,6 @@ cmake -S "$A" -B "$A/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUBE_SCRIPTING
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=$([ "${LTO:-0}" = 1 ] && echo ON || echo OFF) \
   -DDXVK_NATIVE_DIR="$DXVK" -DFAUDIO_DIR="$FAUDIO" "${OFFLINE[@]}" \
   > "$DEST/cmake.log" 2>&1 || { tail -20 "$DEST/cmake.log"; exit 1; }
-nice -n 10 ninja -j8 -C "$A/build" Cube > "$DEST/build.log" 2>&1 || { grep -E "error" -A3 "$DEST/build.log" | head -30; exit 1; }
-cp "$A/build/Cube" "$DEST/Cube"
+nice -n 10 ninja -j8 -C "$A/build" ${MEASURE_TARGETS:-Cube} > "$DEST/build.log" 2>&1 || { grep -E "error" -A3 "$DEST/build.log" | head -30; exit 1; }
+for target in ${MEASURE_TARGETS:-Cube}; do cp "$A/build/$target" "$DEST/$target"; done
 echo "measuring build ready: $DEST/Cube ($(git -C "$REPO" log --oneline -1 "$COMMIT"))"

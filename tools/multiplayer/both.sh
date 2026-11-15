@@ -9,7 +9,11 @@ exec 9>"$LOCK"; echo "== waiting for $LOCK $(date +%T)"; flock -w 3000 9 || { ec
 for p in $(pgrep -x Cube); do case "$(readlink /proc/$p/cwd)" in "$MP"/*|/tmp/*) ;; *) echo "a Cube outside the test folders is running (someone plays)"; exit 1;; esac; done
 XA=${XAUTHORITY:-$(ls -t /run/user/$(id -u)/xauth_* 2>/dev/null | head -n 1)}
 echo "== start $L $WH $(date +%T)"; R=$MP/res-$L; rm -rf $R; mkdir -p $R
-S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg
+if [ "${MP_METRICS:-0}" = 1 ]; then
+    "$W/mp_ss.sh" > "$R/ss.log" & ss_pid=$!
+    trap 'kill "$ss_pid" 2>/dev/null || true' EXIT
+fi
+S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg; printf "creatureDistance %s\n" "${MP_CREATURE_DISTANCE:-100}" >> $S/server.cfg
 if [ $WH = orig ]; then ( cd $S; . $MP/env.sh; ( sleep 290; echo q ) | timeout -k 5 310 nice -n 5 wine Server.exe > $R/server.log 2>&1 ) & sv=$!
 else ( cd $S; ( sleep 290; echo q ) | LD_LIBRARY_PATH=./lib timeout -k 5 310 nice -n 5 ./Server > $R/server.log 2>&1 ) & sv=$!; fi
 sleep 6
@@ -21,11 +25,13 @@ sleep 3; DSP=$(grep -oE "Starting Xwayland on :[0-9]+" $R/cube.log | head -1 | g
 shot() { GAMESCOPE_WAYLAND_DISPLAY=gamescope-0 timeout 8 gamescopectl screenshot $R/$1.png > /dev/null 2>&1; sleep 0.7; }
 sleep 18; H wait; shot o0-start
 C where; C click 1280 781; sleep 3; shot o1; C click 1280 595; sleep 2; C click 1460 647; sleep 3; shot o2-welten
-C click 2390 1358; sleep 2.5; C click 1280 624; sleep 1; C type 127.0.0.1; sleep 1; shot o3-adresse; C click 1280 707; sleep 6; shot o4-verbunden
+C click 2390 1358; sleep 2.5; C click 1280 635; sleep 1; H type 127.0.0.1; sleep 1; shot o3-adresse; C click 1280 720; sleep 6; shot o4-verbunden
 grep -E "joined|Client version|Wrong" $R/server.log | cut -c1-80
 # Linux-Test-Client
 LT=$MP/lin-cli; cd $LT; export TESTDIR=$LT; rm -f Save/map_online_*.db
-CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$LT/fifo env -u GLIBC_TUNABLES timeout 220 ./Cube > $R/cli.log 2>&1 & p=$!
+# HEADLESS=1 (default): our client runs invisible in gamescope, like run.sh; HEADLESS=0 for a desktop window.
+GS=(); [ "${HEADLESS:-1}" = 1 ] && GS=(env -u WAYLAND_DISPLAY gamescope --backend headless -W 2560 -H 1440 -w 2560 -h 1440 --expose-wayland --)
+CUBE_TEST_PIXELS=2560x1440 CUBE_TEST_FIFO=$LT/fifo env -u GLIBC_TUNABLES timeout 220 "${GS[@]}" ./Cube > $R/cli.log 2>&1 & p=$!
 for i in $(seq 40); do grep -q 'read cursor.plx' $R/cli.log && break; sleep 1; done; sleep 4
 $X/waitscreen start 20; $X/fclick 1280 794 2; $X/waitscreen characters 8; $X/fclick 1280 608 1.5; $X/fclick 1460 660 2; $X/waitscreen worlds 8; sleep 1
 $X/fclick 2390 1384 2; $X/fclick 1280 637 1; $X/t text 127.0.0.1; sleep 1; $X/fclick 1280 720 3

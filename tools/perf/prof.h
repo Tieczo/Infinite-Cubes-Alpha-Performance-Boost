@@ -375,6 +375,9 @@ static void profWriteSamples()
         fprintf(stderr, "FRAMETIMES n=%zu mean=%.3fms fps=%.1f p50=%.3fms p99=%.3fms p999=%.3fms max=%.3fms\n", sorted.size(),
                 sum / sorted.size(), 1000.0 * sorted.size() / sum, sorted[sorted.size() / 2],
                 sorted[(size_t)(sorted.size() * 0.99)], sorted[(size_t)(sorted.size() * 0.999)], sorted.back());
+        fprintf(stderr, "FRAMETAIL over16=%zu over33=%zu\n",
+                (size_t)std::count_if(sorted.begin(), sorted.end(), [](float x) { return x > 16; }),
+                (size_t)std::count_if(sorted.begin(), sorted.end(), [](float x) { return x > 33; }));
     }
 #ifdef PROF_RUCKLER
     rcSummary();

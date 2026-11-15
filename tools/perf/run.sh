@@ -115,6 +115,8 @@ if $W/waitscreen start 20; then
 fi
 [ $ok = 1 ] || { echo "MENU FAILED ($LABEL)"; $W/t shot "$PERF_TMP/logs/$LABEL-menu.ppm"; sleep 2; kill -TERM $tpid; wait $tpid; exit 1; }
 echo "WORLD $(date +%T)" >> "$log"
+# GOD also protects the warmup: once dead, the test hook deliberately cannot revive the player.
+[ "${GOD:-0}" = 1 ] && $W/t god 1
 [ "${COMBAT:-0}" = 1 ] || $W/t move $((1280 - dx)) $((720 - dy))   # no mouse at all before a combat run's walk
 # PITCH: camera tilt set after entering the world, the same in every scene (90 = level; default 80, a little
 # down), so that a saved view at the ground does not decide what is drawn.
