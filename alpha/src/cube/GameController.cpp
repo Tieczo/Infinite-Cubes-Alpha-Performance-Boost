@@ -2365,6 +2365,7 @@ void GameController::connect(const std::string &address)
             // Read/decompress without the world lock. Apply deltas in wire order against
             // each creature's current data, before any following non-entity packet.
             std::vector<BytesIO> pendingEntities;
+            size_t pendingEntityBytes = 0;
             auto applyEntities = [&]() {
                 if (pendingEntities.empty())
                     return;
@@ -2408,6 +2409,7 @@ void GameController::connect(const std::string &address)
                 }
                 m_world.leaveRegions();
                 pendingEntities.clear();
+                pendingEntityBytes = 0;
             };
             timeBeginPeriod(1);
             while (m_connected && !disconnected) {
@@ -2467,7 +2469,11 @@ void GameController::connect(const std::string &address)
                         break;
                     }
                     data.decompress();
+                    pendingEntityBytes += data.m_data.size();
                     pendingEntities.push_back(std::move(data));
+                    // Bound entity-only runs, applying each prefix in wire order.
+                    if (pendingEntities.size() >= 512 || pendingEntityBytes >= 1024 * 1024)
+                        applyEntities();
                     break;
                 }
                 case PacketEntitiesEnd: {
