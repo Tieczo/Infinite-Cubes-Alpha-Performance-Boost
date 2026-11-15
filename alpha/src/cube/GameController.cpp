@@ -2362,11 +2362,63 @@ void GameController::connect(const std::string &address)
             bool disconnected = false;
             int lastTick = 0;
             std::set<long long> updated;
+            // Read/decompress without the world lock. Apply deltas in wire order against
+            // each creature's current data, before any following non-entity packet.
+            std::vector<BytesIO> pendingEntities;
+            auto applyEntities = [&]() {
+                if (pendingEntities.empty())
+                    return;
+                m_world.enterRegions();
+                for (auto packet = pendingEntities.begin(); packet != pendingEntities.end(); ++packet) {
+                    BytesIO &data = *packet;
+                    long long id = 0;
+                    data.read(&id, sizeof(id));
+                    Creature *creature = m_world.creatureByID(id);
+                    bool created = false;
+                    if (!creature) {
+                        creature = new Creature(id);
+                        m_world.m_creatures[id] = creature;
+                        created = true;
+                    }
+                    Creature::EntityData &current = creature->m_entityData;
+                    Creature::EntityData entityData(current);
+                    if (readEntityData(data, entityData) == -1) {
+                        disconnected = true;
+                        break;
+                    }
+                    updated.insert(id);
+                    if (creature != m_player) {
+                        if (!created && !(creature->m_entityData.origin != entityData.origin) &&
+                            creature->m_entityData.hp > 0.0f) {
+                            // Go on drawing it from where it is.
+                            creature->m_smoothingTime = RemoteSmoothingTime;
+                            creature->m_previousDrawnPosition = creature->m_drawnPosition;
+                            creature->m_previousDrawnRotation = creature->m_drawnRotation;
+                            creature->m_previousDrawnAim = creature->m_drawnAim;
+                        } else {
+                            creature->m_smoothingTime = 0;
+                            creature->m_inventory.m_inventoryTabs.clear();
+                            creature->m_drawnPosition = entityData.position;
+                            creature->m_drawnRotation = entityData.rotation;
+                            creature->m_previousDrawnPosition = creature->m_drawnPosition;
+                            creature->m_previousDrawnRotation = creature->m_drawnRotation;
+                        }
+                        current = entityData;
+                    }
+                }
+                m_world.leaveRegions();
+                pendingEntities.clear();
+            };
             timeBeginPeriod(1);
             while (m_connected && !disconnected) {
                 int packetId = 0;
                 if (receiveAll(m_socket, (char *)&packetId, sizeof(packetId), 0) == SOCKET_ERROR)
                     break;
+                if (packetId != PacketEntityData) {
+                    applyEntities();
+                    if (disconnected)
+                        break;
+                }
                 if (packetId == PacketEntitiesEnd) {
                     // The time between two server ticks.
                     static int tickTime;
@@ -2415,44 +2467,7 @@ void GameController::connect(const std::string &address)
                         break;
                     }
                     data.decompress();
-                    long long id = 0;
-                    data.read(&id, sizeof(id));
-                    m_world.enterRegions();
-                    Creature *creature = m_world.creatureByID(id);
-                    bool created = false;
-                    if (!creature) {
-                        creature = new Creature(id);
-                        m_world.m_creatures[id] = creature;
-                        created = true;
-                    }
-                    Creature::EntityData &current = creature->m_entityData;
-                    Creature::EntityData entityData(current);
-                    m_world.leaveRegions();
-                    if (readEntityData(data, entityData) == -1) {
-                        disconnected = true;
-                        break;
-                    }
-                    updated.insert(id);
-                    m_world.enterRegions();
-                    if (creature != m_player) {
-                        if (!created && !(creature->m_entityData.origin != entityData.origin) &&
-                            creature->m_entityData.hp > 0.0f) {
-                            // Go on drawing it from where it is.
-                            creature->m_smoothingTime = RemoteSmoothingTime;
-                            creature->m_previousDrawnPosition = creature->m_drawnPosition;
-                            creature->m_previousDrawnRotation = creature->m_drawnRotation;
-                            creature->m_previousDrawnAim = creature->m_drawnAim;
-                        } else {
-                            creature->m_smoothingTime = 0;
-                            creature->m_inventory.m_inventoryTabs.clear();
-                            creature->m_drawnPosition = entityData.position;
-                            creature->m_drawnRotation = entityData.rotation;
-                            creature->m_previousDrawnPosition = creature->m_drawnPosition;
-                            creature->m_previousDrawnRotation = creature->m_drawnRotation;
-                        }
-                        current = entityData;
-                    }
-                    m_world.leaveRegions();
+                    pendingEntities.push_back(std::move(data));
                     break;
                 }
                 case PacketEntitiesEnd: {
@@ -2698,6 +2713,7 @@ void GameController::connect(const std::string &address)
                 }
             next:;
             }
+            applyEntities(); // Also apply complete packets received before a disconnect.
             timeEndPeriod(1);
         });
         SetThreadPriority(m_receiveThread, THREAD_PRIORITY_BELOW_NORMAL);
