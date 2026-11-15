@@ -9,7 +9,11 @@ exec 9>"$LOCK"; echo "== waiting for $LOCK $(date +%T)"; flock -w 3000 9 || { ec
 for p in $(pgrep -x Cube); do case "$(readlink /proc/$p/cwd)" in "$MP"/*|/tmp/*) ;; *) echo "a Cube outside the test folders is running (someone plays)"; exit 1;; esac; done
 XA=${XAUTHORITY:-$(ls -t /run/user/$(id -u)/xauth_* 2>/dev/null | head -n 1)}
 echo "== start $L $WH $(date +%T)"; R=$MP/res-$L; rm -rf $R; mkdir -p $R
-S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg
+if [ "${MP_METRICS:-0}" = 1 ]; then
+    "$W/mp_ss.sh" > "$R/ss.log" & ss_pid=$!
+    trap 'kill "$ss_pid" 2>/dev/null || true' EXIT
+fi
+S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg; printf "creatureDistance %s\n" "${MP_CREATURE_DISTANCE:-100}" >> $S/server.cfg
 if [ $WH = orig ]; then ( cd $S; . $MP/env.sh; ( sleep 290; echo q ) | timeout -k 5 310 nice -n 5 wine Server.exe > $R/server.log 2>&1 ) & sv=$!
 else ( cd $S; ( sleep 290; echo q ) | LD_LIBRARY_PATH=./lib timeout -k 5 310 nice -n 5 ./Server > $R/server.log 2>&1 ) & sv=$!; fi
 sleep 6

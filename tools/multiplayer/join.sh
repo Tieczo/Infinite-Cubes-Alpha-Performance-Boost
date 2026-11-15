@@ -8,7 +8,11 @@ exec 9>"$LOCK"; echo "== waiting for $LOCK $(date +%T)"; flock -w 3000 9 || { ec
 for p in $(pgrep -x Cube); do case "$(readlink /proc/$p/cwd)" in "$MP"/*|/tmp/*) ;; *) echo "a Cube outside the test folders is running (someone plays)"; exit 1;; esac; done
 echo "== start $L $(date +%T)"
 T=$MP/lin-cli; R=$MP/res-$L; rm -rf $R; mkdir -p $R
-S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg; :
+if [ "${MP_METRICS:-0}" = 1 ]; then
+    "$W/mp_ss.sh" > "$R/ss.log" & ss_pid=$!
+    trap 'kill "$ss_pid" 2>/dev/null || true' EXIT
+fi
+S=$MP/$WH-srv; rm -rf $S/Save/*; echo $SEED > $S/server.cfg; printf "creatureDistance %s\n" "${MP_CREATURE_DISTANCE:-100}" >> $S/server.cfg; :
 cd $S
 if [ $WH = orig ]; then . $MP/env.sh; ( sleep $((SECS+60)); echo q ) | timeout -k 5 $((SECS+80)) nice -n 5 wine Server.exe > $R/server.log 2>&1 & sv=$!
 else ( sleep $((SECS+60)); echo q ) | LD_LIBRARY_PATH=./lib timeout -k 5 $((SECS+80)) nice -n 5 ./Server > $R/server.log 2>&1 & sv=$!; fi
